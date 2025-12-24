@@ -69,7 +69,7 @@ Refer to _how_ the system operates, rather than what tasks it performs.
 Responsibilities:
 
 1. **Client:** Users interact with the system via a web or mobile application.
-2. **Server:** Receives requests from the client and handles all business log like the short-URL creation and validation.
+2. **Server:** Receives requests from the client and handles all business logic like the short-URL creation and validation.
 3. **Database:** Stores the mapping of short codes to long URLs, and user-generated aliases and expiration dates.
 
 Inputs:
@@ -87,21 +87,23 @@ shortUrl: string;
 Logic:
 
 1. Validate that `url` is a valid URL (using standard Golang package `net/url`).
-1. If `url` already has a `short_code` (via DB query).
-    1. If queried `short_code`'s `expires_at` is in the past, delete the row from the DB.
-    1. Else if `alias` provided, return `400 Bad Request` (b/c we're returning a short code different from the desired one).
-    1. Else, return `[SERVICE_URL]/[short_code]`.
+# Note: Allow the same URL to have different aliases to save on this index-size and query-time cost.
+# 
+# 1. If `url` already has a `short_code` (via DB query).
+#    1. If queried `short_code`'s `expires_at` is in the past, delete the row from the DB.
+#    1. Else if `alias` provided, return `400 Bad Request` (b/c we're returning a short code different from the desired one).
+#    1. Else, return `[SERVICE_URL]/[short_code]`.
 1. If `alias` provided:
     1. If `alias` already used for another URL (as `short_code`):
         1. If that row's `expires_at` is in the past, delete the row from the DB.
         1. Else, return `400 Bad Request`.
     1. Create row with `short_code=[alias]` (setting `original_url` and `expires_at` if needed).
     1. Return `[SERVICE_URL]/[short_code]`.
-1. Create a random `short_code` using [A-Za-z0-9] with 6 chars (generate UUID which uses 32 chars and grab first 6 non-hyphen chars, repeat until we make one that isn't already in the DB).
+1. Create a random `short_code` using [A-Za-z0-9] with 16 chars (generate an identifier which uses 16 chars (a-z, 0-9) and grab first 8 non-hyphen chars, repeat until we make one that isn't already in the DB).
 1. Create row with this `original_url`, `short_code`, `expires_at`, etc.
 1. Return `[SERVICE_URL]/[short_code]`.
 
-SHORT_CODE_LENGTH = 6 (b/c this is greater than 1 billion)
+SHORT_CODE_LENGTH = 8 (b/c this is greater than 1 billion)
 Need DB index for `original_url`
 Need DB index for `short_code`
 
@@ -125,7 +127,7 @@ Outputs:
 
 Options for redirect status codes:
 - `301 Moved Permanently`: Browsers may temporarily cache this redirect mapping, meaning subsequent requests for the same URL might go directly to the long URL, bypassing our server and ignoring `expired_at` or any other modifications we might make.
-- `302 Temporary Redirect`: Suggests that the resource has been temporarily reloacted to a different URL. Browsers do not cache this response, ensuring future requests to this short URL always go through our server.
+- `302 Temporary Redirect`: Suggests that the resource has been temporarily relocated to a different URL. Browsers do not cache this response, ensuring future requests to this short URL always go through our server.
 
 ### Deep Dives
 
@@ -145,10 +147,10 @@ To generate a short URL for a given long URL, generate a UUID, strip the hyphens
     - Could use hash index, but this is not recommended since you have to REINDEX to shrink it. Easier to use normal B-Tree index, the default, which provides O(log N) lookup.
     - But if we assume 5 redirects per day per user, then we need to support ~5000 queries per second, which requires more connections. Thus, we need to do better.
     - And if we spike to 100x during a moment, that's ~500k queries in that second.
-- Introducing **Redis**, an in-memory key-value store, to reduce query time to 0.001 ms(1e3 times faster!). Requires cache invalidation when the TTL expires (TTL=expires_at). Should use LRU if there is no `expires_at`. Feasible to fit 1B shortened URLs at 20 chars * 1e9 = 20e9 bytes = 20 GB in RAM, plus the original_url key = 100s of GB of AM
+- Introducing **Redis**, an in-memory key-value store, to reduce query time to 0.001 ms(1e3 times faster!). Requires cache invalidation when the TTL expires (TTL=expires_at). Should use LRU if there is no `expires_at`. Feasible to fit 1B shortened URLs at 20 chars * 1e9 = 20e9 bytes = 20 GB in RAM, plus the original_url key = 100s of GB of RAM
     - Can use **Google Memorystore** for managed Redis, offers 1.4 GB to 58 GB per node, so 2-3 instances should be sufficient.
-    - Must set `noeviction` (or could set eviction of 1 year with sliding window that "touches" the TTL every time you touch the entry), must enable Redis persistence
-- We can also levearge **CDN** and **Edge Computing**. Could cache the redirect response on an edge node, e.g. with Cloudflare workers, cached for e.g. 24 hours. Can invalidate CDN cache via an API POST request to CDN API
+    - To avoid cache stampedes, use mutexes to ensure only one process regenerates the data.
+- We can also leverage **CDN** and **Edge Computing**. Could cache the redirect response on an edge node, e.g. with Cloudflare workers, cached for e.g. 24 hours. Can invalidate CDN cache via an API POST request to CDN API
 - Would cost O($10k) per month with Redis and CDN costs (Memorystore is $2k, CDN is $5k to $20k per month with APAC traffic more expensive, Origin Servers are $500 to $1500 per month), DNS is $200 - $500 per month)
 
 #### 3. How can we scale to support 1B shortened URLs and 100M DAU?
@@ -169,3 +171,25 @@ Could use a scheduled cleanup job to delete expired URLs periodically (e.g., dai
 
 #### 4. How do we ensure 99.99% uptime?
 
+Things to consider:
+
+- Multi-region deployment: Active-active or active-passive
+- Database replication: Read replicas + failover (mentioned but not detailed)
+- Redis replication: Sentinel or cluster mode
+- Health checks: For all components
+- Circuit breakers: Fallback to DB if Redis is down
+- Monitoring: Metrics, alerts, dashboards
+- Incident response: Runbooks, on-call rotation
+- Graceful degradation: Serve from DB if cache fails
+- Load balancing: Multiple instances behind a load balancer
+- Automated failover: For DB and cache
+
+
+#### 5. Other considerations
+
+- Idempotency: what if the same request is sent twice?
+- Race conditions: multiple requests for the same alias
+- URL validation: only mentions `net/url`, should validate scheme, length, etc.
+- Security: Rate limiting, input sanitization, malicious URL detection
+- Data model: No schema definition
+- API versioning: not mentioned
