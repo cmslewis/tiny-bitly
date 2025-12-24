@@ -69,7 +69,7 @@ func handleCreateURL(w http.ResponseWriter, r *http.Request) {
 
 	// Send the JSON response.
 	err = writeResponse(w, CreateUrlResponse{
-		ShortURL: shortURL,
+		ShortURL: *shortURL,
 	})
 	if err != nil {
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
