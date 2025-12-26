@@ -9,6 +9,7 @@ import (
 
 	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/service/create_service"
+	"tiny-bitly/internal/service/read_service"
 
 	"github.com/joho/godotenv"
 )
@@ -22,12 +23,13 @@ func main() {
 
 	router := buildRouter()
 
-	// Start the HTTP server.
+	// Lookup the PORT to use.
 	port, isDefined := os.LookupEnv("API_PORT")
 	if !isDefined {
 		log.Fatal("environment variable API_PORT is not defined")
 	}
 
+	// Start the HTTP server.
 	log.Printf("Server starting on port %s\n", port)
 	err = http.ListenAndServe(":"+port, router)
 	if err != nil {
@@ -36,11 +38,12 @@ func main() {
 }
 
 func buildRouter() *http.ServeMux {
-	router := http.NewServeMux()
+	mux := http.NewServeMux()
 
-	router.HandleFunc("/urls", handleCreateURL)
+	mux.HandleFunc("POST /urls", handlePostURL)
+	mux.HandleFunc("GET /{shortCode}", handleGetURL)
 
-	return router
+	return mux
 }
 
 type CreateUrlRequest struct {
@@ -51,17 +54,11 @@ type CreateUrlResponse struct {
 	ShortURL string `json:"shortUrl"`
 }
 
-func handleCreateURL(w http.ResponseWriter, r *http.Request) {
+func handlePostURL(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
-	// Verify this is a POST request.
-	if r.Method != http.MethodPost {
-		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
-		return
-	}
-
 	// Attempt to read the JSON request body.
-	request, err := readRequest[CreateUrlRequest](r)
+	request, err := readRequestJson[CreateUrlRequest](r)
 	if err != nil {
 		http.Error(w, "Malformatted request JSON", http.StatusBadRequest)
 		return
@@ -87,7 +84,7 @@ func handleCreateURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send the JSON response.
-	err = writeResponse(w, CreateUrlResponse{
+	err = writeResponseJson(w, CreateUrlResponse{
 		ShortURL: *shortURL,
 	})
 	if err != nil {
@@ -98,7 +95,45 @@ func handleCreateURL(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("URL created successfully"))
 }
 
-func readRequest[T any](r *http.Request) (*T, error) {
+func handleGetURL(w http.ResponseWriter, r *http.Request) {
+	defer r.Body.Close()
+
+	// Parse `shortCode` out of the URL.
+	shortCode := r.PathValue("shortCode")
+
+	// Log the inbound request.
+	log.Printf("Resolving short URL with code: %s\n", shortCode)
+
+	// Create a DAO.
+	dao := dao.GetDAOOfType("memory")
+	if dao == nil {
+		log.Print("[Get URL] Internal server error: failed to get DAO")
+		http.Error(w, "Failed to get URL", http.StatusInternalServerError)
+		return
+	}
+
+	// Get the original URL for this short code.
+	originalURL, err := read_service.GetOriginalURL(*dao, shortCode)
+	if err != nil {
+		log.Print("[Get URL] Internal server error: failed to lookup original URL")
+		http.Error(w, "Failed to get URL", http.StatusInternalServerError)
+		return
+	}
+
+	// Return 404 if original URL not found.
+	if originalURL == nil {
+		log.Printf("[Get URL] No URL found for short code '%s'", shortCode)
+		http.Error(w, "No URL found for short code", http.StatusNotFound)
+		return
+	}
+
+	// TODO: If `short_code` has expired, return `404 Not Found` response.
+
+	// 302 Temporary Redirect to the original URL.
+	http.Redirect(w, r, *originalURL, http.StatusFound)
+}
+
+func readRequestJson[T any](r *http.Request) (*T, error) {
 	var request T
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
@@ -108,7 +143,7 @@ func readRequest[T any](r *http.Request) (*T, error) {
 	return &request, nil
 }
 
-func writeResponse[T any](w http.ResponseWriter, body T) error {
+func writeResponseJson[T any](w http.ResponseWriter, body T) error {
 	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 

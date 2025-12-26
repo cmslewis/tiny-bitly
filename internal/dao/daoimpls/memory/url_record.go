@@ -1,7 +1,6 @@
 package memory
 
 import (
-	"errors"
 	"sync"
 	"time"
 
@@ -44,7 +43,7 @@ func (m *URLRecordMemoryDAO) Create(shortenedUrl model.URLRecord) (*model.URLRec
 	return entity, nil
 }
 
-func (m *URLRecordMemoryDAO) GetByShortURL(shortUrl string) (*model.URLRecordEntity, error) {
+func (m *URLRecordMemoryDAO) GetByShortCode(shortCode string) (*model.URLRecordEntity, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
@@ -52,12 +51,12 @@ func (m *URLRecordMemoryDAO) GetByShortURL(shortUrl string) (*model.URLRecordEnt
 		if entity.IsDeleted() {
 			continue
 		}
-		if entity.ShortCode == shortUrl {
+		if entity.ShortCode == shortCode {
 			return entity, nil
 		}
 	}
 
-	return nil, errors.New("short URL not found")
+	return nil, nil
 }
 
 var _ daotypes.URLRecordDAO = (*URLRecordMemoryDAO)(nil)
