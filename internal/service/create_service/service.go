@@ -38,9 +38,12 @@ func CreateShortURL(dao dao.DAO, originalURL string) (*string, error) {
 			ShortCode:   shortCode,
 		})
 		if errorspkg.IsSystemError(err, errorspkg.SystemErrorShortCodeAlreadyInUse) {
-			// Try again.
+			// Short-code already in use. Try again.
 		} else if err != nil {
 			return nil, errors.New("failed to save")
+		} else {
+			// Success
+			break
 		}
 	}
 
