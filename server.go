@@ -13,6 +13,9 @@ import (
 	"github.com/joho/godotenv"
 )
 
+// The maximum permitted length of an original URL.
+var maxURLLength int = 1000
+
 func main() {
 	// Load environment variables.
 	err := godotenv.Load()
@@ -63,6 +66,12 @@ func handlePostURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(request.URL) > maxURLLength {
+		log.Print("Bad request: empty short code")
+		http.Error(w, "URL must be no longer than 1000 chars", http.StatusBadRequest)
+		return
+	}
+
 	// Log the inbound request.
 	log.Printf("Request: URL=%s\n", request.URL)
 
@@ -99,6 +108,11 @@ func handleGetURL(w http.ResponseWriter, r *http.Request) {
 
 	// Parse `shortCode` out of the URL.
 	shortCode := r.PathValue("shortCode")
+	if shortCode == "" {
+		log.Print("Bad request: empty short code")
+		http.Error(w, "Short code must be non-empty", http.StatusBadRequest)
+		return
+	}
 
 	// Log the inbound request.
 	log.Printf("Resolving short URL with code: %s\n", shortCode)
