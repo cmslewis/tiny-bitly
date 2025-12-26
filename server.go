@@ -5,18 +5,31 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 
 	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/service/create_service"
+
+	"github.com/joho/godotenv"
 )
 
 func main() {
+	// Load environment variables.
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatal("Error loading .env file")
+	}
+
 	router := buildRouter()
 
 	// Start the HTTP server.
-	port := ":8080"
+	port, isDefined := os.LookupEnv("API_PORT")
+	if !isDefined {
+		log.Fatal("environment variable API_PORT is not defined")
+	}
+
 	log.Printf("Server starting on port %s\n", port)
-	err := http.ListenAndServe(port, router)
+	err = http.ListenAndServe(":"+port, router)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -60,7 +73,7 @@ func handleCreateURL(w http.ResponseWriter, r *http.Request) {
 	// Create a DAO.
 	dao := dao.GetDAOOfType("memory")
 	if dao == nil {
-		fmt.Println("[Create URL] Internal server error:", err.Error())
+		fmt.Println("[Create URL] Internal server error: failed to get DAO")
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
 		return
 	}
