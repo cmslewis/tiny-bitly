@@ -6,15 +6,12 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
 	errorspkg "tiny-bitly/internal/errors"
 	"tiny-bitly/internal/model"
 	"tiny-bitly/internal/service/create_service/utils"
 )
-
-// The maximum number of times to try generating a unique short code before
-// aborting and returning an error.
-var maxTries = 10
 
 // Creates and saves an alias for the provided long URL, then returns the alias.
 func CreateShortURL(dao dao.DAO, originalURL string) (*string, error) {
@@ -24,13 +21,19 @@ func CreateShortURL(dao dao.DAO, originalURL string) (*string, error) {
 		return nil, errors.New("invalid URL")
 	}
 
+	// Read environment variables.
+	maxTries := config.GetIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", 10)
+	shortCodeLength := config.GetIntEnvOrDefault("SHORT_CODE_LENGTH", 6)
+
 	// Retry until we find a short code not taken yet.
 	var shortCode string
 	numTries := 0
 	for numTries < maxTries {
 		numTries += 1
 
-		shortCode = utils.GenerateShortCode()
+		shortCode = utils.GenerateShortCode(shortCodeLength)
+
+		// TODO: Set an expiration time of now + 30 seconds.
 
 		// Save a new URL record.
 		_, err = dao.URLRecordDAO.Create(model.URLRecord{

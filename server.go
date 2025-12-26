@@ -6,15 +6,13 @@ import (
 	"net/http"
 	"os"
 
+	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/service/create_service"
 	"tiny-bitly/internal/service/read_service"
 
 	"github.com/joho/godotenv"
 )
-
-// The maximum permitted length of an original URL.
-var maxURLLength int = 1000
 
 func main() {
 	// Load environment variables.
@@ -65,6 +63,8 @@ func handlePostURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Malformatted request JSON", http.StatusBadRequest)
 		return
 	}
+
+	maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 6)
 
 	if len(request.URL) > maxURLLength {
 		log.Print("Bad request: empty short code")
