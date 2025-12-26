@@ -99,11 +99,11 @@ Logic:
         1. Else, return `400 Bad Request`.
     1. Create row with `short_code=[alias]` (setting `original_url` and `expires_at` if needed).
     1. Return `[SERVICE_URL]/[short_code]`.
-1. Create a random `short_code` using [A-Za-z0-9] with 16 chars (generate an identifier which uses 16 chars (a-z, 0-9) and grab first 8 non-hyphen chars, repeat until we make one that isn't already in the DB).
+1. Create a random `short_code` using [A-Za-z0-9] with 62 chars (generate an identifier which uses 62 chars (A-Z, a-z, 0-9) and grab first 6 non-hyphen chars, repeat until we make one that isn't already in the DB).
 1. Create row with this `original_url`, `short_code`, `expires_at`, etc.
 1. Return `[SERVICE_URL]/[short_code]`.
 
-SHORT_CODE_LENGTH = 8 (b/c this is greater than 1 billion)
+SHORT_CODE_LENGTH = 6 (b/c this is greater than 1 billion)
 Need DB index for `original_url`
 Need DB index for `short_code`
 
