@@ -6,12 +6,11 @@ import (
 	"log"
 	"net/http"
 
-	"tiny-bitly/internal/service"
+	"tiny-bitly/internal/dao"
+	"tiny-bitly/internal/service/create_service"
 )
 
 func main() {
-	// Register a handler function for the default route ("/").
-
 	router := buildRouter()
 
 	// Start the HTTP server.
@@ -39,7 +38,6 @@ type CreateUrlResponse struct {
 	ShortURL string `json:"shortUrl"`
 }
 
-// handleCreateURL
 func handleCreateURL(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
@@ -59,8 +57,16 @@ func handleCreateURL(w http.ResponseWriter, r *http.Request) {
 	// Log the inbound request.
 	fmt.Printf("Request: URL=%s\n", request.URL)
 
+	// Create a DAO.
+	dao := dao.GetDAOOfType("memory")
+	if dao == nil {
+		fmt.Println("[Create URL] Internal server error:", err.Error())
+		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
+		return
+	}
+
 	// Create the short URL.
-	shortURL, err := service.CreateURL(request.URL)
+	shortURL, err := create_service.CreateShortURL(*dao, request.URL)
 	if err != nil {
 		fmt.Println("[Create URL] Internal server error:", err.Error())
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
