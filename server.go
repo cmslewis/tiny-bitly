@@ -2,7 +2,6 @@ package main
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -65,12 +64,12 @@ func handlePostURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log the inbound request.
-	fmt.Printf("Request: URL=%s\n", request.URL)
+	log.Printf("Request: URL=%s\n", request.URL)
 
 	// Create a DAO.
 	dao := dao.GetDAOOfType("memory")
 	if dao == nil {
-		fmt.Println("[Create URL] Internal server error: failed to get DAO")
+		log.Println("Internal server error: failed to get DAO")
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
 		return
 	}
@@ -78,7 +77,7 @@ func handlePostURL(w http.ResponseWriter, r *http.Request) {
 	// Create the short URL.
 	shortURL, err := create_service.CreateShortURL(*dao, request.URL)
 	if err != nil {
-		fmt.Println("[Create URL] Internal server error:", err.Error())
+		log.Println("Internal server error:", err.Error())
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
 		return
 	}
@@ -107,7 +106,7 @@ func handleGetURL(w http.ResponseWriter, r *http.Request) {
 	// Create a DAO.
 	dao := dao.GetDAOOfType("memory")
 	if dao == nil {
-		log.Print("[Get URL] Internal server error: failed to get DAO")
+		log.Print("Internal server error: failed to get DAO")
 		http.Error(w, "Failed to get URL", http.StatusInternalServerError)
 		return
 	}
@@ -115,14 +114,14 @@ func handleGetURL(w http.ResponseWriter, r *http.Request) {
 	// Get the original URL for this short code.
 	originalURL, err := read_service.GetOriginalURL(*dao, shortCode)
 	if err != nil {
-		log.Print("[Get URL] Internal server error: failed to lookup original URL")
+		log.Print("Internal server error: failed to lookup original URL")
 		http.Error(w, "Failed to get URL", http.StatusInternalServerError)
 		return
 	}
 
 	// Return 404 if original URL not found.
 	if originalURL == nil {
-		log.Printf("[Get URL] No URL found for short code '%s'", shortCode)
+		log.Printf("No URL found for short code '%s'", shortCode)
 		http.Error(w, "No URL found for short code", http.StatusNotFound)
 		return
 	}
@@ -137,7 +136,7 @@ func readRequestJson[T any](r *http.Request) (*T, error) {
 	var request T
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		fmt.Println("[Create URL] Bad request:", err.Error())
+		log.Println("Bad request:", err.Error())
 		return nil, err
 	}
 	return &request, nil
@@ -150,7 +149,7 @@ func writeResponseJson[T any](w http.ResponseWriter, body T) error {
 	// Send the JSON response - or an error.
 	err := json.NewEncoder(w).Encode(body)
 	if err != nil {
-		fmt.Println("[Create URL] Internal server error:", err.Error())
+		log.Println("Internal server error:", err.Error())
 		return err
 	}
 
