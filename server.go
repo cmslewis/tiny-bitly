@@ -67,7 +67,7 @@ func handlePostURL(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Request: URL=%s\n", request.URL)
 
 	// Create a DAO.
-	dao := dao.GetDAOOfType("memory")
+	dao := dao.GetDAOOfType(dao.DAOTypeMemory)
 	if dao == nil {
 		log.Println("Internal server error: failed to get DAO")
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
@@ -104,7 +104,7 @@ func handleGetURL(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Resolving short URL with code: %s\n", shortCode)
 
 	// Create a DAO.
-	dao := dao.GetDAOOfType("memory")
+	dao := dao.GetDAOOfType(dao.DAOTypeMemory)
 	if dao == nil {
 		log.Print("Internal server error: failed to get DAO")
 		http.Error(w, "Failed to get URL", http.StatusInternalServerError)
