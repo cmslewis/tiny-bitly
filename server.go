@@ -99,8 +99,6 @@ func handlePostURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
 		return
 	}
-
-	w.Write([]byte("URL created successfully"))
 }
 
 func handleGetURL(w http.ResponseWriter, r *http.Request) {
