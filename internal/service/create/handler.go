@@ -21,9 +21,10 @@ type CreateUrlResponse struct {
 
 // Creates an HTTP handler for POST /urls that uses the provided DAO.
 // - 201 Created with a CreateUrlResponse on success
-// - 400 Bad Request if the original URL is an invalid URL
-// - 400 Bad Request if the original URL is longer than 1000 chars
-// - 500 System Error if anything else fails
+// - 400 Bad Request if the URL is invalid, exceeds length, or alias is invalid
+// - 409 Conflict if the alias is already in use
+// - 500 Internal Server Error for other errors
+// - 503 Service Unavailable if the data store is unavailable
 func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
@@ -41,8 +42,7 @@ func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 		// Create the short URL.
 		shortURL, err := createShortURL(r.Context(), *dao, request.URL, request.Alias)
 		if err != nil {
-			log.Println("Internal server error:", err.Error())
-			http.Error(w, "Failed to create URL", http.StatusInternalServerError)
+			handleServiceError(w, err)
 			return
 		}
 
@@ -52,7 +52,8 @@ func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 			ShortURL: *shortURL,
 		})
 		if err != nil {
-			http.Error(w, "Failed to create URL", http.StatusInternalServerError)
+			log.Printf("Failed to write response: %v", err)
+			handleServiceError(w, err)
 			return
 		}
 	}

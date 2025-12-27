@@ -3,7 +3,6 @@ package create
 import (
 	"context"
 	"errors"
-	"fmt"
 	"log"
 	"net/url"
 	"time"
@@ -23,7 +22,7 @@ func createShortURL(
 	// Validate the URL.
 	validatedURL, err := validateURL(originalURL)
 	if err != nil {
-		return nil, errors.New("invalid URL")
+		return nil, apperrors.ErrInvalidURL
 	}
 
 	// Read environment variables.
@@ -33,18 +32,18 @@ func createShortURL(
 	shortCodeTTL := config.GetDurationEnvOrDefault("SHORT_CODE_TTL_MILLIS", 30000)
 
 	if len(originalURL) > maxURLLength {
-		return nil, fmt.Errorf("URL must be shorter than %d chars", maxURLLength)
+		return nil, apperrors.ErrURLLengthExceeded
 	}
 
 	// Get the URL of our client-facing service.
 	hostname, err := config.GetStringEnv("API_HOSTNAME")
 	if err != nil {
-		return nil, errors.New("environment variable must be configured: API_HOSTNAME")
+		return nil, apperrors.ErrConfigurationMissing
 	}
 
 	// If a custom alias was provided, validate it.
 	if alias != nil && !validateAlias(*alias) {
-		return nil, errors.New("invalid alias, must be non-empty base62 string (A-Z, a-z, 0-9)")
+		return nil, apperrors.ErrInvalidAlias
 	}
 
 	// Retry until we find a short code not taken yet.
@@ -76,7 +75,7 @@ func createShortURL(
 		if errors.Is(err, apperrors.ErrShortCodeAlreadyInUse) {
 			// If we're using a custom alias, fail outright.
 			if alias != nil {
-				return nil, errors.New("custom alias already in use")
+				return nil, apperrors.ErrAliasAlreadyInUse
 			}
 			// Else, try again with a new randomly generated short code.
 			continue
@@ -84,7 +83,8 @@ func createShortURL(
 
 		// Fail if another error occurred
 		if err != nil {
-			return nil, errors.New("failed to save")
+			log.Printf("Failed to save URL record: %v", err)
+			return nil, apperrors.ErrDataStoreUnavailable
 		}
 
 		// Break on success.
@@ -94,7 +94,7 @@ func createShortURL(
 
 	// Check if we exceeded max retries without success.
 	if !hasCreated {
-		return nil, errors.New("failed to generate unique short code after maximum retries")
+		return nil, apperrors.ErrMaxRetriesExceeded
 	}
 
 	log.Printf("Generated a new short code for URL %s: %s", *validatedURL, shortCode)
@@ -102,7 +102,8 @@ func createShortURL(
 	// Build the short URL using the short code.
 	shortURL, err := url.JoinPath(hostname, shortCode)
 	if err != nil {
-		return nil, errors.New("invalid URL path segments")
+		log.Printf("Failed to build short URL: %v", err)
+		return nil, apperrors.ErrConfigurationMissing
 	}
 
 	return &shortURL, nil
