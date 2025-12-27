@@ -1,12 +1,11 @@
-package routes
+package create_service
 
 import (
+	"encoding/json"
 	"log"
 	"net/http"
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
-	"tiny-bitly/internal/routes/utils"
-	"tiny-bitly/internal/service/create_service"
 )
 
 type CreateUrlRequest struct {
@@ -30,7 +29,7 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 	defer r.Body.Close()
 
 	// Attempt to read the JSON request body.
-	request, err := utils.ReadRequestJson[CreateUrlRequest](r)
+	request, err := readRequestJson[CreateUrlRequest](r)
 	if err != nil {
 		http.Error(w, "Malformatted request JSON", http.StatusBadRequest)
 		return
@@ -44,7 +43,7 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log the inbound request.
-	log.Printf("Request: URL=%s Alias=%s\n", request.URL, request.Alias)
+	log.Printf("Request: URL=%s\n", request.URL)
 
 	// Create a DAO.
 	dao := dao.GetDAOOfType(dao.DAOTypeMemory)
@@ -55,7 +54,7 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the short URL.
-	shortURL, err := create_service.CreateShortURL(*dao, request.URL, request.Alias)
+	shortURL, err := CreateShortURL(*dao, request.URL, request.Alias)
 	if err != nil {
 		log.Println("Internal server error:", err.Error())
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
@@ -63,11 +62,39 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send the JSON response.
-	err = utils.WriteResponseJson(w, CreateUrlResponse{
+	err = writeResponseJson(w, CreateUrlResponse{
 		ShortURL: *shortURL,
 	})
 	if err != nil {
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
 		return
 	}
+}
+
+// Reads a JSON object of type T from the provided HTTP request.
+// Returns an error if decoding fails.
+func readRequestJson[T any](r *http.Request) (*T, error) {
+	var request T
+	err := json.NewDecoder(r.Body).Decode(&request)
+	if err != nil {
+		log.Println("Bad request:", err.Error())
+		return nil, err
+	}
+	return &request, nil
+}
+
+// Writes a JSON object of type T to the provided HTTP response.
+// Returns an error if encoding fails.
+func writeResponseJson[T any](w http.ResponseWriter, body T) error {
+	w.WriteHeader(http.StatusCreated)
+	w.Header().Set("Content-Type", "application/json")
+
+	// Send the JSON response - or an error.
+	err := json.NewEncoder(w).Encode(body)
+	if err != nil {
+		log.Println("Internal server error:", err.Error())
+		return err
+	}
+
+	return nil
 }

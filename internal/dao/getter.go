@@ -14,18 +14,13 @@ const (
 	DAOTypeMemory   DAOType = "memory"
 )
 
-// The main Data-Access Object (DAO) that contains all entity-specific DAOs.
-type DAO struct {
-	URLRecordDAO daotypes.URLRecordDAO
-}
-
 var (
-	memoryDAO     *DAO
+	memoryDAO     *daotypes.DAO
 	memoryDAOOnce sync.Once
 )
 
 // Returns a main DAO containing all entity-specific DAOs of the specified type.
-func GetDAOOfType(daoType DAOType) *DAO {
+func GetDAOOfType(daoType DAOType) *daotypes.DAO {
 	switch daoType {
 	case DAOTypeDatabase:
 		// TODO: Implement the database DAO.
@@ -35,7 +30,7 @@ func GetDAOOfType(daoType DAOType) *DAO {
 		// Return a singleton to ensure that values stored in memory will
 		// persist across invocations.
 		memoryDAOOnce.Do(func() {
-			memoryDAO = &DAO{
+			memoryDAO = &daotypes.DAO{
 				URLRecordDAO: memory.NewURLRecordMemoryDAO(),
 			}
 		})

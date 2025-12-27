@@ -2,20 +2,22 @@ package create_service
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/url"
-	"os"
 	"time"
 	"tiny-bitly/internal/config"
-	"tiny-bitly/internal/dao"
+	"tiny-bitly/internal/dao/daotypes"
 	errorspkg "tiny-bitly/internal/errors"
 	"tiny-bitly/internal/model"
 	"tiny-bitly/internal/service/create_service/utils"
 )
 
 // Creates and saves an alias for the provided long URL, then returns the alias.
-func CreateShortURL(dao dao.DAO, originalURL string, alias *string) (*string, error) {
+func CreateShortURL(
+	dao daotypes.DAO,
+	originalURL string,
+	alias *string,
+) (*string, error) {
 	// Validate the URL.
 	validatedURL, err := utils.ValidateURL(originalURL)
 	if err != nil {
@@ -25,7 +27,13 @@ func CreateShortURL(dao dao.DAO, originalURL string, alias *string) (*string, er
 	// Read environment variables.
 	maxTries := config.GetIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", 10)
 	shortCodeLength := config.GetIntEnvOrDefault("SHORT_CODE_LENGTH", 6)
-	shortCodeTtlSeconds := config.GetIntEnvOrDefault("SHORT_CODE_TTL_SECONDS", 30)
+	shortCodeTTLMillis := config.GetIntEnvOrDefault("SHORT_CODE_TTL_MILLIS", 30000)
+
+	// Get the URL of our client-facing service.
+	hostname, err := config.GetStringEnv("API_HOSTNAME")
+	if err != nil {
+		return nil, errors.New("environment variable must be configured: API_HOSTNAME")
+	}
 
 	// If a custom alias was provided, validate it.
 	if alias != nil && !utils.ValidateAlias(*alias) {
@@ -34,6 +42,7 @@ func CreateShortURL(dao dao.DAO, originalURL string, alias *string) (*string, er
 
 	// Retry until we find a short code not taken yet.
 	var shortCode string
+	var hasCreated bool
 	numTries := 0
 	for numTries < maxTries {
 		numTries += 1
@@ -45,7 +54,7 @@ func CreateShortURL(dao dao.DAO, originalURL string, alias *string) (*string, er
 		}
 
 		// Set expiration time based on configured TTL.
-		expiresAt := time.Now().Add(time.Duration(shortCodeTtlSeconds) * time.Second)
+		expiresAt := time.Now().Add(time.Duration(shortCodeTTLMillis) * time.Millisecond)
 
 		log.Printf("Creating a new URL record shortCode=%s expiresAt=%v", shortCode, expiresAt)
 
@@ -72,16 +81,16 @@ func CreateShortURL(dao dao.DAO, originalURL string, alias *string) (*string, er
 		}
 
 		// Break on success.
+		hasCreated = true
 		break
 	}
 
-	fmt.Printf("Generated a new short code for URL %s: %s", *validatedURL, shortCode)
-
-	// Get the URL of our client-facing service.
-	hostname, isDefined := os.LookupEnv("API_HOSTNAME")
-	if !isDefined {
-		log.Fatal("environment variable API_HOSTNAME is not defined")
+	// Check if we exceeded max retries without success.
+	if !hasCreated {
+		return nil, errors.New("failed to generate unique short code after maximum retries")
 	}
+
+	log.Printf("Generated a new short code for URL %s: %s", *validatedURL, shortCode)
 
 	// Build the short URL using the short code.
 	shortURL, err := url.JoinPath(hostname, shortCode)

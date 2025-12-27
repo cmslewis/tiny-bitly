@@ -5,7 +5,8 @@ import (
 	"net/http"
 	"os"
 
-	"tiny-bitly/internal/routes"
+	"tiny-bitly/internal/service/create_service"
+	"tiny-bitly/internal/service/read_service"
 
 	"github.com/joho/godotenv"
 )
@@ -36,8 +37,8 @@ func main() {
 func buildRouter() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /urls", routes.HandlePostURL)
-	mux.HandleFunc("GET /{shortCode}", routes.HandleGetURL)
+	mux.HandleFunc("POST /urls", create_service.HandlePostURL)
+	mux.HandleFunc("GET /{shortCode}", read_service.HandleGetURL)
 
 	return mux
 }

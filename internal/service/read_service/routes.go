@@ -1,10 +1,9 @@
-package routes
+package read_service
 
 import (
 	"log"
 	"net/http"
 	"tiny-bitly/internal/dao"
-	"tiny-bitly/internal/service/read_service"
 )
 
 // Handles a GET request for an original URL based on its short URL.
@@ -34,7 +33,7 @@ func HandleGetURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the original URL for this short code.
-	originalURL, err := read_service.GetOriginalURL(*dao, shortCode)
+	originalURL, err := GetOriginalURL(*dao, shortCode)
 	if err != nil {
 		log.Print("Internal server error: failed to lookup original URL")
 		http.Error(w, "Failed to get URL", http.StatusInternalServerError)
