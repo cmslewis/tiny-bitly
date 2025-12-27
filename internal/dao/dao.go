@@ -3,7 +3,6 @@ package dao
 import (
 	"context"
 	"log"
-	"sync"
 	"tiny-bitly/internal/dao/memory"
 	"tiny-bitly/internal/model"
 )
@@ -25,11 +24,6 @@ const (
 	DAOTypeMemory   DAOType = "memory"
 )
 
-var (
-	memoryDAO     *DAO
-	memoryDAOOnce sync.Once
-)
-
 // Returns a main DAO containing all entity-specific DAOs of the specified type.
 func GetDAOOfType(daoType DAOType) *DAO {
 	switch daoType {
@@ -38,14 +32,9 @@ func GetDAOOfType(daoType DAOType) *DAO {
 		log.Fatalf("database DAO not yet implemented")
 		return nil
 	case DAOTypeMemory:
-		// Return a singleton to ensure that values stored in memory will
-		// persist across invocations.
-		memoryDAOOnce.Do(func() {
-			memoryDAO = &DAO{
-				URLRecordDAO: memory.NewURLRecordMemoryDAO(),
-			}
-		})
-		return memoryDAO
+		return &DAO{
+			URLRecordDAO: memory.NewURLRecordMemoryDAO(),
+		}
 	default:
 		log.Fatalf("unknown DAO type: %s", daoType)
 		return nil
