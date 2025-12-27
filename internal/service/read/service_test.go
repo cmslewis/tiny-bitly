@@ -1,11 +1,11 @@
-package read_service
+package read
 
 import (
 	"context"
 	"errors"
 	"testing"
-	"tiny-bitly/internal/dao/daotypes"
-	mock_daotypes "tiny-bitly/internal/dao/daotypes/generated"
+	"tiny-bitly/internal/dao"
+	mock_daotypes "tiny-bitly/internal/dao/generated"
 	"tiny-bitly/internal/model"
 
 	"github.com/stretchr/testify/suite"
@@ -15,7 +15,7 @@ import (
 type ReadServiceSuite struct {
 	suite.Suite
 	ctrl         *gomock.Controller
-	dao          daotypes.DAO
+	dao          dao.DAO
 	urlRecordDAO *mock_daotypes.MockURLRecordDAO
 }
 
@@ -26,14 +26,14 @@ func TestReadServiceSuite(t *testing.T) {
 func (suite *ReadServiceSuite) SetupTest() {
 	suite.ctrl = gomock.NewController(suite.T())
 	suite.urlRecordDAO = mock_daotypes.NewMockURLRecordDAO(suite.ctrl)
-	suite.dao = daotypes.DAO{
+	suite.dao = dao.DAO{
 		URLRecordDAO: suite.urlRecordDAO,
 	}
 }
 
 func (suite *ReadServiceSuite) TestEmptyShortCode() {
 	shortCode := ""
-	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := getOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.Nil(err)
 	suite.Nil(originalURL)
 }
@@ -45,7 +45,7 @@ func (suite *ReadServiceSuite) TestGetByShortCodeError() {
 		GetByShortCode(gomock.Any(), shortCode).
 		Return(nil, errors.New("database error"))
 
-	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := getOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.NotNil(err)
 	suite.Nil(originalURL)
 	suite.ErrorContains(err, "failed to get original URL by short code")
@@ -58,7 +58,7 @@ func (suite *ReadServiceSuite) TestGetByShortCodeNotFound() {
 		GetByShortCode(gomock.Any(), shortCode).
 		Return(nil, nil)
 
-	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := getOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.Nil(err)
 	suite.Nil(originalURL)
 }
@@ -77,7 +77,7 @@ func (suite *ReadServiceSuite) TestSuccess() {
 			nil,
 		)
 
-	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := getOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.Nil(err)
 	suite.NotNil(originalURL)
 	suite.Equal(expectedOriginalURL, *originalURL)

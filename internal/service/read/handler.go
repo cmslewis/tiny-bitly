@@ -1,16 +1,16 @@
-package read_service
+package read
 
 import (
 	"log"
 	"net/http"
-	"tiny-bitly/internal/dao/daotypes"
+	"tiny-bitly/internal/dao"
 )
 
 // NewHandleGetURL creates an HTTP handler for GET /{shortCode} that uses the provided DAO.
 // - 302 Temporary Redirect if an original URL is found
 // - 400 Not Found if an original URL is not found (or if the short URL is expired)
 // - 500 System Error if any other error occurs
-func NewHandleGetURL(dao *daotypes.DAO) http.HandlerFunc {
+func NewHandleGetURL(dao *dao.DAO) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
@@ -26,7 +26,7 @@ func NewHandleGetURL(dao *daotypes.DAO) http.HandlerFunc {
 		log.Printf("Resolving short URL with code: %s\n", shortCode)
 
 		// Get the original URL for this short code.
-		originalURL, err := GetOriginalURL(r.Context(), *dao, shortCode)
+		originalURL, err := getOriginalURL(r.Context(), *dao, shortCode)
 		if err != nil {
 			log.Print("Internal server error: failed to lookup original URL")
 			http.Error(w, "Failed to get URL", http.StatusInternalServerError)

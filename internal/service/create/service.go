@@ -1,4 +1,4 @@
-package create_service
+package create
 
 import (
 	"context"
@@ -9,20 +9,19 @@ import (
 	"time"
 	"tiny-bitly/internal/apperrors"
 	"tiny-bitly/internal/config"
-	"tiny-bitly/internal/dao/daotypes"
+	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/model"
-	"tiny-bitly/internal/service/create_service/utils"
 )
 
 // Creates and saves an alias for the provided long URL, then returns the alias.
-func CreateShortURL(
+func createShortURL(
 	ctx context.Context,
-	dao daotypes.DAO,
+	dao dao.DAO,
 	originalURL string,
 	alias *string,
 ) (*string, error) {
 	// Validate the URL.
-	validatedURL, err := utils.ValidateURL(originalURL)
+	validatedURL, err := validateURL(originalURL)
 	if err != nil {
 		return nil, errors.New("invalid URL")
 	}
@@ -44,7 +43,7 @@ func CreateShortURL(
 	}
 
 	// If a custom alias was provided, validate it.
-	if alias != nil && !utils.ValidateAlias(*alias) {
+	if alias != nil && !validateAlias(*alias) {
 		return nil, errors.New("invalid alias, must be non-empty base62 string (A-Z, a-z, 0-9)")
 	}
 
@@ -58,7 +57,7 @@ func CreateShortURL(
 		if alias != nil {
 			shortCode = *alias
 		} else {
-			shortCode = utils.GenerateShortCode(shortCodeLength)
+			shortCode = generateShortCode(shortCodeLength)
 		}
 
 		// Set expiration time based on configured TTL.

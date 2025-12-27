@@ -1,4 +1,4 @@
-package create_service
+package create
 
 import (
 	"context"
@@ -7,8 +7,8 @@ import (
 	"strings"
 	"testing"
 	"tiny-bitly/internal/apperrors"
-	"tiny-bitly/internal/dao/daotypes"
-	mock_daotypes "tiny-bitly/internal/dao/daotypes/generated"
+	"tiny-bitly/internal/dao"
+	mock_daotypes "tiny-bitly/internal/dao/generated"
 	"tiny-bitly/internal/model"
 
 	"github.com/stretchr/testify/suite"
@@ -18,7 +18,7 @@ import (
 type CreateServiceSuite struct {
 	suite.Suite
 	ctrl         *gomock.Controller
-	dao          daotypes.DAO
+	dao          dao.DAO
 	urlRecordDAO *mock_daotypes.MockURLRecordDAO
 }
 
@@ -31,21 +31,21 @@ func (suite *CreateServiceSuite) SetupTest() {
 	os.Setenv("API_HOSTNAME", "http://localhost:8080")
 	suite.ctrl = gomock.NewController(suite.T())
 	suite.urlRecordDAO = mock_daotypes.NewMockURLRecordDAO(suite.ctrl)
-	suite.dao = daotypes.DAO{
+	suite.dao = dao.DAO{
 		URLRecordDAO: suite.urlRecordDAO,
 	}
 }
 
 func (suite *CreateServiceSuite) TestErrorInputURLEmpty() {
 	originalURL := ""
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := createShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
 
 func (suite *CreateServiceSuite) TestErrorInputURLInvalidChars() {
 	originalURL := "www.`.com"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := createShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
@@ -53,7 +53,7 @@ func (suite *CreateServiceSuite) TestErrorInputURLInvalidChars() {
 func (suite *CreateServiceSuite) TestErrorInputURLTooLong() {
 	os.Setenv("MAX_URL_LENGTH", "2")
 	originalURL := "abc"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := createShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "URL must be shorter than 2 chars")
 }
@@ -61,7 +61,7 @@ func (suite *CreateServiceSuite) TestErrorInputURLTooLong() {
 func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {
 	originalURL := "https://www.foo.com"
 	alias := ""
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, &alias)
+	_, err := createShortURL(context.Background(), suite.dao, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid alias")
 }
@@ -69,7 +69,7 @@ func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {
 func (suite *CreateServiceSuite) TestErrorInputAliasInvalidChars() {
 	originalURL := "https://www.foo.com"
 	alias := "`"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, &alias)
+	_, err := createShortURL(context.Background(), suite.dao, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid alias")
 }
@@ -80,7 +80,7 @@ func (suite *CreateServiceSuite) TestErrorInputAliasAlreadyUsedForDifferentURL()
 
 	originalURL := "https://www.foo.com"
 	alias := "bar"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, &alias)
+	_, err := createShortURL(context.Background(), suite.dao, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "custom alias already in use")
 }
@@ -89,7 +89,7 @@ func (suite *CreateServiceSuite) TestErrorConfigAPIHostnameMissing() {
 	os.Clearenv()
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := createShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "environment variable must be configured: API_HOSTNAME")
 }
@@ -106,7 +106,7 @@ func (suite *CreateServiceSuite) TestErrorMaxRetries() {
 		Return(nil, apperrors.ErrShortCodeAlreadyInUse)
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := createShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "failed to generate unique short code after maximum retries")
 }
@@ -136,7 +136,7 @@ func (suite *CreateServiceSuite) TestConfigMaxTries() {
 		Times(0)
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := createShortURL(context.Background(), suite.dao, originalURL, nil)
 
 	suite.Error(err)
 	suite.ErrorContains(err, "failed to generate unique short code after maximum retries")
@@ -159,7 +159,7 @@ func (suite *CreateServiceSuite) TestConfigShortCodeLength() {
 		Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	shortURL, err := createShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.Nil(err)
 	suite.NotNil(shortURL)
 	slashIndex := strings.LastIndex(*shortURL, "/")
@@ -181,7 +181,7 @@ func (suite *CreateServiceSuite) TestSuccess() {
 		Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	shortURL, err := createShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.Nil(err)
 	suite.NotNil(shortURL)
 

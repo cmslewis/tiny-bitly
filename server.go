@@ -7,9 +7,8 @@ import (
 
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
-	"tiny-bitly/internal/dao/daotypes"
-	"tiny-bitly/internal/service/create_service"
-	"tiny-bitly/internal/service/read_service"
+	"tiny-bitly/internal/service/create"
+	"tiny-bitly/internal/service/read"
 
 	"github.com/joho/godotenv"
 )
@@ -45,18 +44,18 @@ func main() {
 	}
 
 	// Start the HTTP server.
-	log.Printf("Server starting on port %s\n", port)
+	log.Printf("Server starting on port %d\n", port)
 	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 	}
 }
 
-func buildRouter(appDAO *daotypes.DAO) *http.ServeMux {
+func buildRouter(appDAO *dao.DAO) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /urls", create_service.NewHandlePostURL(appDAO))
-	mux.HandleFunc("GET /{shortCode}", read_service.NewHandleGetURL(appDAO))
+	mux.HandleFunc("POST /urls", create.NewHandlePostURL(appDAO))
+	mux.HandleFunc("GET /{shortCode}", read.NewHandleGetURL(appDAO))
 
 	return mux
 }

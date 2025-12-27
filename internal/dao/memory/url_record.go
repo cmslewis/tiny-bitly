@@ -6,7 +6,6 @@ import (
 	"time"
 
 	"tiny-bitly/internal/apperrors"
-	"tiny-bitly/internal/dao/daotypes"
 	"tiny-bitly/internal/model"
 )
 
@@ -69,5 +68,3 @@ func (m *URLRecordMemoryDAO) GetByShortCode(_ctx context.Context, shortCode stri
 
 	return nil, nil
 }
-
-var _ daotypes.URLRecordDAO = (*URLRecordMemoryDAO)(nil)

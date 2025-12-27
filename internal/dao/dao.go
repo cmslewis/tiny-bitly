@@ -1,11 +1,22 @@
 package dao
 
 import (
+	"context"
 	"log"
 	"sync"
-	"tiny-bitly/internal/dao/daoimpls/memory"
-	"tiny-bitly/internal/dao/daotypes"
+	"tiny-bitly/internal/dao/memory"
+	"tiny-bitly/internal/model"
 )
+
+// The main Data-Access Object (DAO) that contains all entity-specific DAOs.
+type DAO struct {
+	URLRecordDAO URLRecordDAO
+}
+
+type URLRecordDAO interface {
+	Create(ctx context.Context, urlRecord model.URLRecord) (*model.URLRecordEntity, error)
+	GetByShortCode(ctx context.Context, shortCode string) (*model.URLRecordEntity, error)
+}
 
 type DAOType string
 
@@ -15,12 +26,12 @@ const (
 )
 
 var (
-	memoryDAO     *daotypes.DAO
+	memoryDAO     *DAO
 	memoryDAOOnce sync.Once
 )
 
 // Returns a main DAO containing all entity-specific DAOs of the specified type.
-func GetDAOOfType(daoType DAOType) *daotypes.DAO {
+func GetDAOOfType(daoType DAOType) *DAO {
 	switch daoType {
 	case DAOTypeDatabase:
 		// TODO: Implement the database DAO.
@@ -30,7 +41,7 @@ func GetDAOOfType(daoType DAOType) *daotypes.DAO {
 		// Return a singleton to ensure that values stored in memory will
 		// persist across invocations.
 		memoryDAOOnce.Do(func() {
-			memoryDAO = &daotypes.DAO{
+			memoryDAO = &DAO{
 				URLRecordDAO: memory.NewURLRecordMemoryDAO(),
 			}
 		})

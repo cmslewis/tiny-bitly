@@ -1,14 +1,14 @@
-package read_service
+package read
 
 import (
 	"context"
 	"errors"
 	"log"
-	"tiny-bitly/internal/dao/daotypes"
+	"tiny-bitly/internal/dao"
 )
 
 // Gets the original URL from a short code, or returns nil if one does not exist.
-func GetOriginalURL(ctx context.Context, dao daotypes.DAO, shortCode string) (*string, error) {
+func getOriginalURL(ctx context.Context, dao dao.DAO, shortCode string) (*string, error) {
 	// Validate the short code.
 	if shortCode == "" {
 		return nil, nil

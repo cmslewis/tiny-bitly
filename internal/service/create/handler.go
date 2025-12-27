@@ -1,10 +1,10 @@
-package create_service
+package create
 
 import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"tiny-bitly/internal/dao/daotypes"
+	"tiny-bitly/internal/dao"
 )
 
 type CreateUrlRequest struct {
@@ -24,7 +24,7 @@ type CreateUrlResponse struct {
 // - 400 Bad Request if the original URL is an invalid URL
 // - 400 Bad Request if the original URL is longer than 1000 chars
 // - 500 System Error if anything else fails
-func NewHandlePostURL(dao *daotypes.DAO) http.HandlerFunc {
+func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		defer r.Body.Close()
 
@@ -39,7 +39,7 @@ func NewHandlePostURL(dao *daotypes.DAO) http.HandlerFunc {
 		log.Printf("Request: URL=%s\n", request.URL)
 
 		// Create the short URL.
-		shortURL, err := CreateShortURL(r.Context(), *dao, request.URL, request.Alias)
+		shortURL, err := createShortURL(r.Context(), *dao, request.URL, request.Alias)
 		if err != nil {
 			log.Println("Internal server error:", err.Error())
 			http.Error(w, "Failed to create URL", http.StatusInternalServerError)
