@@ -47,10 +47,18 @@ func (m *URLRecordMemoryDAO) GetByShortCode(shortCode string) (*model.URLRecordE
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
+	now := time.Now()
+
 	for _, entity := range m.entities {
 		if entity.IsDeleted() {
 			continue
 		}
+
+		isExpired := entity.ExpiresAt.Before(now)
+		if isExpired {
+			continue
+		}
+
 		if entity.ShortCode == shortCode {
 			return entity, nil
 		}

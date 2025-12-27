@@ -6,6 +6,7 @@ import (
 	"log"
 	"net/url"
 	"os"
+	"time"
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
 	errorspkg "tiny-bitly/internal/errors"
@@ -24,6 +25,7 @@ func CreateShortURL(dao dao.DAO, originalURL string) (*string, error) {
 	// Read environment variables.
 	maxTries := config.GetIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", 10)
 	shortCodeLength := config.GetIntEnvOrDefault("SHORT_CODE_LENGTH", 6)
+	shortCodeTtlSeconds := config.GetIntEnvOrDefault("SHORT_CODE_TTL_SECONDS", 30)
 
 	// Retry until we find a short code not taken yet.
 	var shortCode string
@@ -33,12 +35,14 @@ func CreateShortURL(dao dao.DAO, originalURL string) (*string, error) {
 
 		shortCode = utils.GenerateShortCode(shortCodeLength)
 
-		// TODO: Set an expiration time of now + 30 seconds.
+		// Set expiration time based on configured TTL.
+		expiresAt := time.Now().Add(time.Duration(shortCodeTtlSeconds) * time.Second)
 
 		// Save a new URL record.
 		_, err = dao.URLRecordDAO.Create(model.URLRecord{
 			OriginalURL: *validatedURL,
 			ShortCode:   shortCode,
+			ExpiresAt:   expiresAt,
 		})
 		if errorspkg.IsSystemError(err, errorspkg.SystemErrorShortCodeAlreadyInUse) {
 			// Short-code already in use. Try again.

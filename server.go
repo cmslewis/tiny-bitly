@@ -138,8 +138,6 @@ func handleGetURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: If `short_code` has expired, return `404 Not Found` response.
-
 	// 302 Temporary Redirect to the original URL.
 	http.Redirect(w, r, *originalURL, http.StatusFound)
 }

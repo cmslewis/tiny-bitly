@@ -4,6 +4,7 @@ type SystemError string
 
 const (
 	SystemErrorShortCodeAlreadyInUse SystemError = "SystemErrorShortCodeAlreadyInUse"
+	SystemErrorShortCodeExpired      SystemError = "SystemErrorShortCodeExpired"
 )
 
 // Returns true if the provided error is a specific system error.
