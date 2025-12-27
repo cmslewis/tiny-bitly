@@ -12,6 +12,7 @@ import (
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/service/create"
+	"tiny-bitly/internal/service/health"
 	"tiny-bitly/internal/service/read"
 
 	"github.com/joho/godotenv"
@@ -98,6 +99,11 @@ func handleQuitSignal(server *http.Server, sig os.Signal) {
 func buildRouter(appDAO *dao.DAO) *http.ServeMux {
 	mux := http.NewServeMux()
 
+	// Health check endpoints
+	mux.HandleFunc("GET /health", health.NewHandleGetHealth(appDAO))
+	mux.HandleFunc("GET /ready", health.NewHandleGetReady(appDAO))
+
+	// Application endpoints
 	mux.HandleFunc("POST /urls", create.NewHandlePostURL(appDAO))
 	mux.HandleFunc("GET /{shortCode}", read.NewHandleGetURL(appDAO))
 
