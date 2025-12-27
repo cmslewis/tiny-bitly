@@ -7,20 +7,22 @@ import (
 	"time"
 )
 
-// Retrieves a time.Duration environment variable. Returns the value and an
-// error if the variable is not set or cannot be parsed.
+// Retrieves a time.Duration environment variable in milliseconds. Returns the
+// value and an error if the variable is not set or cannot be parsed.
 func GetDurationEnv(key string) (time.Duration, error) {
 	value, err := GetIntEnv(key)
 	if err != nil {
 		return 0, err
 	}
-	return time.Duration(value), nil
+	return time.Duration(value) * time.Millisecond, nil
 }
 
-// Retrieves a time.Duration environment variable, or returns the default if not set.
+// Retrieves a time.Duration environment variable in milliseconds, or returns
+// the default if not set. The environment variable and default value are
+// expected to be in milliseconds.
 func GetDurationEnvOrDefault(key string, defaultValue int) time.Duration {
 	value := GetIntEnvOrDefault(key, defaultValue)
-	return time.Duration(value)
+	return time.Duration(value) * time.Millisecond
 }
 
 // Retrieves an integer environment variable. Returns the value and an error if

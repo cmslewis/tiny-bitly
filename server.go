@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
@@ -80,7 +79,7 @@ func handleQuitSignal(server *http.Server, sig os.Signal) {
 
 	// Create a context with timeout for graceful shutdown.
 	shutdownTimeout := config.GetDurationEnvOrDefault("TIMEOUT_SHUTDOWN_MILLIS", 30000)
-	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
 	// Attempt graceful shutdown.
