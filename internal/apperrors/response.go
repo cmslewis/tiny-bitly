@@ -1,10 +1,11 @@
 package apperrors
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
+	"tiny-bitly/internal/middleware"
 )
 
 type ErrorResponse struct {
@@ -18,9 +19,9 @@ type ErrorMapping struct {
 
 // Maps service errors to appropriate HTTP status codes and responses. Logs
 // detailed error information while returning user-friendly messages.
-func HandleServiceError(w http.ResponseWriter, err error, mappings map[error]ErrorMapping) {
-	// Log the detailed error for debugging.
-	log.Printf("Service error: %v", err)
+func HandleServiceError(ctx context.Context, w http.ResponseWriter, err error, mappings map[error]ErrorMapping) {
+	// Log the detailed error for debugging with request ID.
+	middleware.LogErrorWithRequestID(ctx, err, "Service error")
 
 	w.Header().Set("Content-Type", "application/json")
 

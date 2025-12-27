@@ -2,9 +2,9 @@ package create
 
 import (
 	"encoding/json"
-	"log"
 	"net/http"
 	"tiny-bitly/internal/dao"
+	"tiny-bitly/internal/middleware"
 )
 
 type CreateUrlRequest struct {
@@ -37,12 +37,12 @@ func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 		}
 
 		// Log the inbound request.
-		log.Printf("Request: URL=%s\n", request.URL)
+		middleware.LogWithRequestID(r.Context(), "Request: URL=%s", request.URL)
 
 		// Create the short URL.
 		shortURL, err := createShortURL(r.Context(), *dao, request.URL, request.Alias)
 		if err != nil {
-			handleServiceError(w, err)
+			handleServiceError(r.Context(), w, err)
 			return
 		}
 
@@ -52,8 +52,7 @@ func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 			ShortURL: *shortURL,
 		})
 		if err != nil {
-			log.Printf("Failed to write response: %v", err)
-			handleServiceError(w, err)
+			handleServiceError(r.Context(), w, err)
 			return
 		}
 	}
@@ -65,7 +64,7 @@ func readRequestJson[T any](r *http.Request) (*T, error) {
 	var request T
 	err := json.NewDecoder(r.Body).Decode(&request)
 	if err != nil {
-		log.Println("Bad request:", err.Error())
+		middleware.LogErrorWithRequestID(r.Context(), err, "Bad request")
 		return nil, err
 	}
 	return &request, nil
@@ -79,7 +78,8 @@ func writeResponseJson[T any](w http.ResponseWriter, body T) error {
 	// Send the JSON response - or an error.
 	err := json.NewEncoder(w).Encode(body)
 	if err != nil {
-		log.Println("Internal server error:", err.Error())
+		// Note: We don't have request context here, so use regular log
+		// In practice, this error is rare and would be caught by the handler
 		return err
 	}
 

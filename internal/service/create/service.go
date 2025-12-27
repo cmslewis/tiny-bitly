@@ -3,12 +3,12 @@ package create
 import (
 	"context"
 	"errors"
-	"log"
 	"net/url"
 	"time"
 	"tiny-bitly/internal/apperrors"
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
+	"tiny-bitly/internal/middleware"
 	"tiny-bitly/internal/model"
 )
 
@@ -62,7 +62,7 @@ func createShortURL(
 		// Set expiration time based on configured TTL.
 		expiresAt := time.Now().Add(shortCodeTTL * time.Millisecond)
 
-		log.Printf("Creating a new URL record shortCode=%s expiresAt=%v", shortCode, expiresAt)
+		middleware.LogWithRequestID(ctx, "Creating a new URL record shortCode=%s expiresAt=%v", shortCode, expiresAt)
 
 		// Save a new URL record.
 		_, err = dao.URLRecordDAO.Create(ctx, model.URLRecord{
@@ -83,7 +83,7 @@ func createShortURL(
 
 		// Fail if another error occurred
 		if err != nil {
-			log.Printf("Failed to save URL record: %v", err)
+			middleware.LogErrorWithRequestID(ctx, err, "Failed to save URL record")
 			return nil, apperrors.ErrDataStoreUnavailable
 		}
 
@@ -97,12 +97,12 @@ func createShortURL(
 		return nil, apperrors.ErrMaxRetriesExceeded
 	}
 
-	log.Printf("Generated a new short code for URL %s: %s", *validatedURL, shortCode)
+	middleware.LogWithRequestID(ctx, "Generated a new short code for URL %s: %s", *validatedURL, shortCode)
 
 	// Build the short URL using the short code.
 	shortURL, err := url.JoinPath(hostname, shortCode)
 	if err != nil {
-		log.Printf("Failed to build short URL: %v", err)
+		middleware.LogErrorWithRequestID(ctx, err, "Failed to build short URL")
 		return nil, apperrors.ErrConfigurationMissing
 	}
 

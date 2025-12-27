@@ -11,6 +11,7 @@ import (
 
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
+	"tiny-bitly/internal/middleware"
 	"tiny-bitly/internal/service/create"
 	"tiny-bitly/internal/service/health"
 	"tiny-bitly/internal/service/read"
@@ -33,6 +34,10 @@ func main() {
 
 	router := buildRouter(appDAO)
 
+	// Wrap router with request-tracing middleware. Request ID middleware should
+	// be applied early so other middleware/handlers can use it.
+	handler := middleware.RequestIDMiddleware(router)
+
 	port := config.GetIntEnvOrDefault("API_PORT", 8080)
 	idleTimeout := config.GetDurationEnvOrDefault("TIMEOUT_IDLE_MILLIS", 60000)
 	requestTimeout := config.GetDurationEnvOrDefault("TIMEOUT_REQUEST_MILLIS", 30000)
@@ -42,7 +47,7 @@ func main() {
 	// Configure HTTP server with timeouts.
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", port),
-		Handler:      http.TimeoutHandler(router, requestTimeout, "Request timeout"),
+		Handler:      http.TimeoutHandler(handler, requestTimeout, "Request timeout"),
 		ReadTimeout:  readTimeout,
 		WriteTimeout: writeTimeout,
 		IdleTimeout:  idleTimeout,

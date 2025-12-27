@@ -1,9 +1,9 @@
 package read
 
 import (
-	"log"
 	"net/http"
 	"tiny-bitly/internal/dao"
+	"tiny-bitly/internal/middleware"
 )
 
 // NewHandleGetURL creates an HTTP handler for GET /{shortCode} that uses the provided DAO.
@@ -19,24 +19,24 @@ func NewHandleGetURL(dao *dao.DAO) http.HandlerFunc {
 		// Parse `shortCode` out of the URL.
 		shortCode := r.PathValue("shortCode")
 		if shortCode == "" {
-			log.Print("Bad request: empty short code")
+			middleware.LogWithRequestID(r.Context(), "Bad request: empty short code")
 			http.Error(w, "Short code must be non-empty", http.StatusBadRequest)
 			return
 		}
 
 		// Log the inbound request.
-		log.Printf("Resolving short URL with code: %s\n", shortCode)
+		middleware.LogWithRequestID(r.Context(), "Resolving short URL with code: %s", shortCode)
 
 		// Get the original URL for this short code.
 		originalURL, err := getOriginalURL(r.Context(), *dao, shortCode)
 		if err != nil {
-			handleServiceError(w, err)
+			handleServiceError(r.Context(), w, err)
 			return
 		}
 
 		// Return 404 if original URL not found.
 		if originalURL == nil {
-			log.Printf("No URL found for short code '%s'", shortCode)
+			middleware.LogWithRequestID(r.Context(), "No URL found for short code '%s'", shortCode)
 			http.Error(w, "No URL found for short code", http.StatusNotFound)
 			return
 		}

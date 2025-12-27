@@ -2,9 +2,9 @@ package read
 
 import (
 	"context"
-	"log"
 	"tiny-bitly/internal/apperrors"
 	"tiny-bitly/internal/dao"
+	"tiny-bitly/internal/middleware"
 )
 
 // Gets the original URL from a short code, or returns nil if one does not exist.
@@ -17,12 +17,12 @@ func getOriginalURL(ctx context.Context, dao dao.DAO, shortCode string) (*string
 	// Lookup in the data store.
 	urlRecord, err := dao.URLRecordDAO.GetByShortCode(ctx, shortCode)
 	if err != nil {
-		log.Printf("Failed to get URL record for short code %s: %v", shortCode, err)
+		middleware.LogWithRequestID(ctx, "Failed to get URL record for short code %s: %v", shortCode, err)
 		return nil, apperrors.ErrDataStoreUnavailable
 	}
 
 	if urlRecord == nil {
-		log.Printf("URL record is nil for short code %s", shortCode)
+		middleware.LogWithRequestID(ctx, "URL record is nil for short code %s", shortCode)
 		return nil, nil
 	}
 
