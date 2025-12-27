@@ -35,7 +35,7 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 6)
+	maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 1000)
 	if len(request.URL) > maxURLLength {
 		log.Print("Bad request: original URL is longer than 1000 chars")
 		http.Error(w, "URL must be no longer than 1000 chars", http.StatusBadRequest)
