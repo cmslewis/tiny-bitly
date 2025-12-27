@@ -27,6 +27,7 @@ func TestCreateServiceSuite(t *testing.T) {
 }
 
 func (suite *CreateServiceSuite) SetupTest() {
+	os.Clearenv()
 	os.Setenv("API_HOSTNAME", "http://localhost:8080")
 	suite.ctrl = gomock.NewController(suite.T())
 	suite.urlRecordDAO = mock_daotypes.NewMockURLRecordDAO(suite.ctrl)
@@ -47,6 +48,14 @@ func (suite *CreateServiceSuite) TestErrorInputURLInvalidChars() {
 	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
+}
+
+func (suite *CreateServiceSuite) TestErrorInputURLTooLong() {
+	os.Setenv("MAX_URL_LENGTH", "2")
+	originalURL := "abc"
+	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	suite.NotNil(err)
+	suite.ErrorContains(err, "URL must be shorter than 2 chars")
 }
 
 func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {

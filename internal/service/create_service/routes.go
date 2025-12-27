@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"log"
 	"net/http"
-	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao/daotypes"
 )
 
@@ -33,13 +32,6 @@ func NewHandlePostURL(dao *daotypes.DAO) http.HandlerFunc {
 		request, err := readRequestJson[CreateUrlRequest](r)
 		if err != nil {
 			http.Error(w, "Malformatted request JSON", http.StatusBadRequest)
-			return
-		}
-
-		maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 1000)
-		if len(request.URL) > maxURLLength {
-			log.Print("Bad request: original URL is longer than 1000 chars")
-			http.Error(w, "URL must be no longer than 1000 chars", http.StatusBadRequest)
 			return
 		}
 

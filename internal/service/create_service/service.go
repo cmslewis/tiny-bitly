@@ -3,6 +3,7 @@ package create_service
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log"
 	"net/url"
 	"time"
@@ -28,8 +29,13 @@ func CreateShortURL(
 
 	// Read environment variables.
 	maxTries := config.GetIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", 10)
+	maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 1000)
 	shortCodeLength := config.GetIntEnvOrDefault("SHORT_CODE_LENGTH", 6)
 	shortCodeTTLMillis := config.GetIntEnvOrDefault("SHORT_CODE_TTL_MILLIS", 30000)
+
+	if len(originalURL) > maxURLLength {
+		return nil, fmt.Errorf("URL must be shorter than %d chars", maxURLLength)
+	}
 
 	// Get the URL of our client-facing service.
 	hostname, err := config.GetStringEnv("API_HOSTNAME")
