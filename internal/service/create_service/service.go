@@ -5,9 +5,9 @@ import (
 	"log"
 	"net/url"
 	"time"
+	"tiny-bitly/internal/apperrors"
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao/daotypes"
-	errorspkg "tiny-bitly/internal/errors"
 	"tiny-bitly/internal/model"
 	"tiny-bitly/internal/service/create_service/utils"
 )
@@ -66,7 +66,7 @@ func CreateShortURL(
 		})
 
 		// If the short code is already in use:
-		if errorspkg.IsSystemError(err, errorspkg.SystemErrorShortCodeAlreadyInUse) {
+		if errors.Is(err, apperrors.ErrShortCodeAlreadyInUse) {
 			// If we're using a custom alias, fail outright.
 			if alias != nil {
 				return nil, errors.New("custom alias already in use")

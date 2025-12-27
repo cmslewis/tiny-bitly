@@ -1,14 +1,13 @@
 package create_service
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"strings"
 	"testing"
+	"tiny-bitly/internal/apperrors"
 	"tiny-bitly/internal/dao/daotypes"
 	mock_daotypes "tiny-bitly/internal/dao/daotypes/generated"
-	errorspkg "tiny-bitly/internal/errors"
 	"tiny-bitly/internal/model"
 
 	"github.com/stretchr/testify/suite"
@@ -67,7 +66,7 @@ func (suite *CreateServiceSuite) TestErrorInputAliasInvalidChars() {
 
 func (suite *CreateServiceSuite) TestErrorInputAliasAlreadyUsedForDifferentURL() {
 	// Mock: Create() should return a specific error code.
-	suite.urlRecordDAO.EXPECT().Create(gomock.Any()).Return(nil, errors.New(string(errorspkg.SystemErrorShortCodeAlreadyInUse)))
+	suite.urlRecordDAO.EXPECT().Create(gomock.Any()).Return(nil, apperrors.ErrShortCodeAlreadyInUse)
 
 	originalURL := "https://www.foo.com"
 	alias := "bar"
@@ -94,7 +93,7 @@ func (suite *CreateServiceSuite) TestErrorMaxRetries() {
 		EXPECT().
 		Create(gomock.Any()).
 		AnyTimes().
-		Return(nil, errors.New(string(errorspkg.SystemErrorShortCodeAlreadyInUse)))
+		Return(nil, apperrors.ErrShortCodeAlreadyInUse)
 
 	originalURL := "https://www.foo.com"
 	_, err := CreateShortURL(suite.dao, originalURL, nil)
@@ -110,7 +109,7 @@ func (suite *CreateServiceSuite) TestConfigMaxTries() {
 	suite.urlRecordDAO.
 		EXPECT().
 		Create(gomock.Any()).
-		Return(nil, errors.New(string(errorspkg.SystemErrorShortCodeAlreadyInUse))).
+		Return(nil, apperrors.ErrShortCodeAlreadyInUse).
 		Times(1)
 
 	// Second call must NEVER happen.

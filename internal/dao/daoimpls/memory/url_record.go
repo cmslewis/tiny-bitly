@@ -1,12 +1,11 @@
 package memory
 
 import (
-	"errors"
 	"sync"
 	"time"
 
+	"tiny-bitly/internal/apperrors"
 	"tiny-bitly/internal/dao/daotypes"
-	errorspkg "tiny-bitly/internal/errors"
 	"tiny-bitly/internal/model"
 )
 
@@ -34,7 +33,7 @@ func (m *URLRecordMemoryDAO) Create(urlRecord model.URLRecord) (*model.URLRecord
 		if otherEntity.URLRecord.ShortCode == urlRecord.ShortCode &&
 			!otherEntity.IsDeleted() &&
 			!otherEntity.IsExpired() {
-			return nil, errors.New(string(errorspkg.SystemErrorShortCodeAlreadyInUse))
+			return nil, apperrors.ErrShortCodeAlreadyInUse
 		}
 	}
 
