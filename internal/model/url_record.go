@@ -14,3 +14,7 @@ type URLRecordEntity struct {
 	Entity
 	URLRecord
 }
+
+func (u URLRecordEntity) IsExpired() bool {
+	return u.ExpiresAt.Before(time.Now())
+}

@@ -1,10 +1,12 @@
 package memory
 
 import (
+	"errors"
 	"sync"
 	"time"
 
 	"tiny-bitly/internal/dao/daotypes"
+	errorspkg "tiny-bitly/internal/errors"
 	"tiny-bitly/internal/model"
 )
 
@@ -27,6 +29,15 @@ func (m *URLRecordMemoryDAO) Create(urlRecord model.URLRecord) (*model.URLRecord
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Fail if this short code is already in use by an active record.
+	for _, otherEntity := range m.entities {
+		if otherEntity.URLRecord.ShortCode == urlRecord.ShortCode &&
+			!otherEntity.IsDeleted() &&
+			!otherEntity.IsExpired() {
+			return nil, errors.New(string(errorspkg.SystemErrorShortCodeAlreadyInUse))
+		}
+	}
+
 	now := time.Now()
 	entity := &model.URLRecordEntity{
 		Entity: model.Entity{
@@ -47,18 +58,10 @@ func (m *URLRecordMemoryDAO) GetByShortCode(shortCode string) (*model.URLRecordE
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	now := time.Now()
-
 	for _, entity := range m.entities {
-		if entity.IsDeleted() {
+		if entity.IsDeleted() || entity.IsExpired() {
 			continue
 		}
-
-		isExpired := entity.ExpiresAt.Before(now)
-		if isExpired {
-			continue
-		}
-
 		if entity.ShortCode == shortCode {
 			return entity, nil
 		}
