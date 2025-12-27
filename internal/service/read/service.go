@@ -23,7 +23,7 @@ func GetOriginalURL(ctx context.Context, dao dao.DAO, shortCode string) (*string
 
 	if urlRecord == nil {
 		middleware.LogWithRequestID(ctx, "URL record is nil for short code %s", shortCode)
-		return nil, nil
+		return nil, apperrors.ErrShortCodeNotFound
 	}
 
 	return &urlRecord.OriginalURL, nil

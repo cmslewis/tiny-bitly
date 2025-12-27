@@ -48,7 +48,7 @@ func (suite *ReadServiceSuite) TestGetByShortCodeError() {
 	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.NotNil(err)
 	suite.Nil(originalURL)
-	suite.ErrorContains(err, "failed to get original URL by short code")
+	suite.ErrorContains(err, "data store unavailable")
 }
 
 func (suite *ReadServiceSuite) TestGetByShortCodeNotFound() {
@@ -59,8 +59,9 @@ func (suite *ReadServiceSuite) TestGetByShortCodeNotFound() {
 		Return(nil, nil)
 
 	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
-	suite.Nil(err)
+	suite.NotNil(err)
 	suite.Nil(originalURL)
+	suite.ErrorContains(err, "short code not found")
 }
 
 func (suite *ReadServiceSuite) TestSuccess() {

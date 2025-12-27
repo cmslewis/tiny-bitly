@@ -28,6 +28,9 @@ var (
 	// already in use by an active (not deleted and not expired) entity.
 	ErrShortCodeAlreadyInUse = errors.New("short code already in use")
 
+	// Returned when attempting to get a short code that does not exist.
+	ErrShortCodeNotFound = errors.New("short code not found")
+
 	// Returned when the URL exceeds the maximum allowed length.
 	ErrURLLengthExceeded = errors.New("URL length exceeded")
 )
