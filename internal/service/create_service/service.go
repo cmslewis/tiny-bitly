@@ -31,7 +31,7 @@ func CreateShortURL(
 	maxTries := config.GetIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", 10)
 	maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 1000)
 	shortCodeLength := config.GetIntEnvOrDefault("SHORT_CODE_LENGTH", 6)
-	shortCodeTTLMillis := config.GetIntEnvOrDefault("SHORT_CODE_TTL_MILLIS", 30000)
+	shortCodeTTL := config.GetDurationEnvOrDefault("SHORT_CODE_TTL_MILLIS", 30000)
 
 	if len(originalURL) > maxURLLength {
 		return nil, fmt.Errorf("URL must be shorter than %d chars", maxURLLength)
@@ -62,7 +62,7 @@ func CreateShortURL(
 		}
 
 		// Set expiration time based on configured TTL.
-		expiresAt := time.Now().Add(time.Duration(shortCodeTTLMillis) * time.Millisecond)
+		expiresAt := time.Now().Add(shortCodeTTL * time.Millisecond)
 
 		log.Printf("Creating a new URL record shortCode=%s expiresAt=%v", shortCode, expiresAt)
 

@@ -4,7 +4,24 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"time"
 )
+
+// Retrieves a time.Duration environment variable. Returns the value and an
+// error if the variable is not set or cannot be parsed.
+func GetDurationEnv(key string) (time.Duration, error) {
+	value, err := GetIntEnv(key)
+	if err != nil {
+		return 0, err
+	}
+	return time.Duration(value), nil
+}
+
+// Retrieves a time.Duration environment variable, or returns the default if not set.
+func GetDurationEnvOrDefault(key string, defaultValue int) time.Duration {
+	value := GetIntEnvOrDefault(key, defaultValue)
+	return time.Duration(value)
+}
 
 // Retrieves an integer environment variable. Returns the value and an error if
 // the variable is not set or cannot be parsed.

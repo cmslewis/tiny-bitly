@@ -1,10 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"net/http"
-	"os"
 
+	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/dao/daotypes"
 	"tiny-bitly/internal/service/create_service"
@@ -28,15 +29,24 @@ func main() {
 
 	router := buildRouter(appDAO)
 
-	// Lookup the PORT to use.
-	port, isDefined := os.LookupEnv("API_PORT")
-	if !isDefined {
-		log.Fatal("environment variable API_PORT is not defined")
+	port := config.GetIntEnvOrDefault("API_PORT", 8080)
+	idleTimeout := config.GetDurationEnvOrDefault("TIMEOUT_IDLE_MILLIS", 60000)
+	requestTimeout := config.GetDurationEnvOrDefault("TIMEOUT_REQUEST_MILLIS", 30000)
+	readTimeout := config.GetDurationEnvOrDefault("TIMEOUT_READ_MILLIS", 30000)
+	writeTimeout := config.GetDurationEnvOrDefault("TIMEOUT_WRITE_MILLIS", 30000)
+
+	// Configure HTTP server with timeouts.
+	server := &http.Server{
+		Addr:         fmt.Sprintf(":%d", port),
+		Handler:      http.TimeoutHandler(router, requestTimeout, "Request timeout"),
+		ReadTimeout:  readTimeout,
+		WriteTimeout: writeTimeout,
+		IdleTimeout:  idleTimeout,
 	}
 
 	// Start the HTTP server.
 	log.Printf("Server starting on port %s\n", port)
-	err = http.ListenAndServe(":"+port, router)
+	err = server.ListenAndServe()
 	if err != nil {
 		log.Fatal(err)
 	}
