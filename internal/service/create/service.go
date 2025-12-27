@@ -13,7 +13,7 @@ import (
 )
 
 // Creates and saves an alias for the provided long URL, then returns the alias.
-func createShortURL(
+func CreateShortURL(
 	ctx context.Context,
 	dao dao.DAO,
 	originalURL string,

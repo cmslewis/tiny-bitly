@@ -38,7 +38,7 @@ func (suite *HealthServiceSuite) TestCheckHealthSuccess() {
 		GetByShortCode(gomock.Any(), "__health_check__").
 		Return(nil, nil)
 
-	isHealthy := checkHealth(context.Background(), suite.dao)
+	isHealthy := CheckHealth(context.Background(), suite.dao)
 	suite.True(isHealthy)
 }
 
@@ -49,7 +49,7 @@ func (suite *HealthServiceSuite) TestCheckHealthWithRecordFound() {
 		GetByShortCode(gomock.Any(), "__health_check__").
 		Return(&model.URLRecordEntity{}, nil)
 
-	isHealthy := checkHealth(context.Background(), suite.dao)
+	isHealthy := CheckHealth(context.Background(), suite.dao)
 	suite.True(isHealthy)
 }
 
@@ -60,7 +60,6 @@ func (suite *HealthServiceSuite) TestCheckHealthFailure() {
 		GetByShortCode(gomock.Any(), "__health_check__").
 		Return(nil, errors.New("database connection failed"))
 
-	isHealthy := checkHealth(context.Background(), suite.dao)
+	isHealthy := CheckHealth(context.Background(), suite.dao)
 	suite.False(isHealthy)
 }
-

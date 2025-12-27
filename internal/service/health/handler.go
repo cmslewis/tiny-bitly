@@ -28,7 +28,7 @@ func NewHandleGetHealth(dao *dao.DAO) http.HandlerFunc {
 // - 503 Service Unavailable if the service is not ready
 func NewHandleGetReady(dao *dao.DAO) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		isHealthy := checkHealth(r.Context(), *dao)
+		isHealthy := CheckHealth(r.Context(), *dao)
 
 		w.Header().Set("Content-Type", "application/json")
 

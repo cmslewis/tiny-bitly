@@ -33,7 +33,7 @@ func (suite *ReadServiceSuite) SetupTest() {
 
 func (suite *ReadServiceSuite) TestEmptyShortCode() {
 	shortCode := ""
-	originalURL, err := getOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.Nil(err)
 	suite.Nil(originalURL)
 }
@@ -45,7 +45,7 @@ func (suite *ReadServiceSuite) TestGetByShortCodeError() {
 		GetByShortCode(gomock.Any(), shortCode).
 		Return(nil, errors.New("database error"))
 
-	originalURL, err := getOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.NotNil(err)
 	suite.Nil(originalURL)
 	suite.ErrorContains(err, "failed to get original URL by short code")
@@ -58,7 +58,7 @@ func (suite *ReadServiceSuite) TestGetByShortCodeNotFound() {
 		GetByShortCode(gomock.Any(), shortCode).
 		Return(nil, nil)
 
-	originalURL, err := getOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.Nil(err)
 	suite.Nil(originalURL)
 }
@@ -77,7 +77,7 @@ func (suite *ReadServiceSuite) TestSuccess() {
 			nil,
 		)
 
-	originalURL, err := getOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.Nil(err)
 	suite.NotNil(originalURL)
 	suite.Equal(expectedOriginalURL, *originalURL)

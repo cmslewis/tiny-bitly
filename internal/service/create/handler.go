@@ -40,7 +40,7 @@ func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 		middleware.LogWithRequestID(r.Context(), "Request: URL=%s", request.URL)
 
 		// Create the short URL.
-		shortURL, err := createShortURL(r.Context(), *dao, request.URL, request.Alias)
+		shortURL, err := CreateShortURL(r.Context(), *dao, request.URL, request.Alias)
 		if err != nil {
 			handleServiceError(r.Context(), w, err)
 			return

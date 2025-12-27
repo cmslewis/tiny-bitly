@@ -28,7 +28,7 @@ func NewHandleGetURL(dao *dao.DAO) http.HandlerFunc {
 		middleware.LogWithRequestID(r.Context(), "Resolving short URL with code: %s", shortCode)
 
 		// Get the original URL for this short code.
-		originalURL, err := getOriginalURL(r.Context(), *dao, shortCode)
+		originalURL, err := GetOriginalURL(r.Context(), *dao, shortCode)
 		if err != nil {
 			handleServiceError(r.Context(), w, err)
 			return
