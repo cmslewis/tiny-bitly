@@ -23,7 +23,7 @@ func NewURLRecordMemoryDAO() *URLRecordMemoryDAO {
 	}
 }
 
-func (m *URLRecordMemoryDAO) Create(shortenedUrl model.URLRecord) (*model.URLRecordEntity, error) {
+func (m *URLRecordMemoryDAO) Create(urlRecord model.URLRecord) (*model.URLRecordEntity, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -34,7 +34,7 @@ func (m *URLRecordMemoryDAO) Create(shortenedUrl model.URLRecord) (*model.URLRec
 			CreatedAt: now,
 			UpdatedAt: now,
 		},
-		URLRecord: shortenedUrl,
+		URLRecord: urlRecord,
 	}
 
 	m.entities[m.idCounter] = entity

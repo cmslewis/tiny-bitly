@@ -11,6 +11,10 @@ import (
 
 type CreateUrlRequest struct {
 	URL string `json:"url"`
+
+	// A specific user-provided alias to use in the short URL.
+	// If not provided, a random short code will be created.
+	Alias *string `json:"alias"`
 }
 
 type CreateUrlResponse struct {
@@ -33,7 +37,6 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 6)
-
 	if len(request.URL) > maxURLLength {
 		log.Print("Bad request: original URL is longer than 1000 chars")
 		http.Error(w, "URL must be no longer than 1000 chars", http.StatusBadRequest)
@@ -41,7 +44,7 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Log the inbound request.
-	log.Printf("Request: URL=%s\n", request.URL)
+	log.Printf("Request: URL=%s Alias=%s\n", request.URL, request.Alias)
 
 	// Create a DAO.
 	dao := dao.GetDAOOfType(dao.DAOTypeMemory)
@@ -52,7 +55,7 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the short URL.
-	shortURL, err := create_service.CreateShortURL(*dao, request.URL)
+	shortURL, err := create_service.CreateShortURL(*dao, request.URL, request.Alias)
 	if err != nil {
 		log.Println("Internal server error:", err.Error())
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
