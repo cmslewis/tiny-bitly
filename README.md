@@ -6,10 +6,10 @@ This is a tiny version of bit.ly built for the purposes of improving my system-d
 
 ### In scope
 
-- Users should be able to submit a long URL and receive a shortened one.
-    - Optionally, users should be able to specify a custom alias for their shortened URL.
-    - Optionally, users should be able to specify an expiration date for their shortened URL.
-- Users should be able to access the original URL by using the shortened URL.
+1. Users should be able to submit a long URL and receive a shortened one.
+    1. Optionally, users should be able to specify a custom alias for their shortened URL.
+    1. Optionally, users should be able to specify an expiration date for their shortened URL.
+1. Users should be able to access the original URL by using the shortened URL.
 
 ### Out of scope
 
@@ -22,8 +22,8 @@ Refer to _how_ the system operates, rather than what tasks it performs.
 
 ### In scope
 
-- If the submitted long URL is not a valid URL, a 4xx error is returned.
-- A short URL must correspond to exactly one long URL.
+- ✅ If the submitted long URL is not a valid URL, a 4xx error is returned.
+- ✅ A short URL must correspond to exactly one long URL.
 - The redirection should occur with minimal delay (<100ms).
 - Must be reliable and available 99.99% of the time (availability > consistency).
 - Must support 1B shortened URLs and 100M DAU.
@@ -41,7 +41,7 @@ Refer to _how_ the system operates, rather than what tasks it performs.
 
 ## API
 
-- Shorten a URL:
+- ✅ Shorten a URL:
     ```
     POST /urls
     {
@@ -55,7 +55,7 @@ Refer to _how_ the system operates, rather than what tasks it performs.
     }
     ```
 
-- Access a long URL via a short URL:
+- ✅ Access a long URL via a short URL:
     ```
     GET /{short_code}
     -> HTTP 302 Redirect to the original long URL
@@ -87,20 +87,16 @@ shortUrl: string;
 Logic:
 
 1. Validate that `url` is a valid URL (using standard Golang package `net/url`).
-# Note: Allow the same URL to have different aliases to save on this index-size and query-time cost.
-# 
-# 1. If `url` already has a `short_code` (via DB query).
-#    1. If queried `short_code`'s `expires_at` is in the past, delete the row from the DB.
-#    1. Else if `alias` provided, return `400 Bad Request` (b/c we're returning a short code different from the desired one).
-#    1. Else, return `[SERVICE_URL]/[short_code]`.
 1. If `alias` provided:
     1. If `alias` already used for another URL (as `short_code`):
         1. If that row's `expires_at` is in the past, delete the row from the DB.
         1. Else, return `400 Bad Request`.
     1. Create row with `short_code=[alias]` (setting `original_url` and `expires_at` if needed).
     1. Return `[SERVICE_URL]/[short_code]`.
-1. Create a random `short_code` using [A-Za-z0-9] with 62 chars (generate an identifier which uses 62 chars (A-Z, a-z, 0-9) and grab first 6 non-hyphen chars, repeat until we make one that isn't already in the DB).
-1. Create row with this `original_url`, `short_code`, `expires_at`, etc.
+1. Until success, up to 10 tries:
+    1. Create a random `short_code`.
+    1. Create row with this `original_url`, `short_code`, `expires_at`, etc.
+    1. If the short code already exists, fail and try again.
 1. Return `[SERVICE_URL]/[short_code]`.
 
 SHORT_CODE_LENGTH = 6 (b/c this is greater than 1 billion)
@@ -133,7 +129,9 @@ Options for redirect status codes:
 
 #### 1. Ensuring URLs are unique
 
-To generate a short URL for a given long URL, generate a UUID, strip the hyphens, then trim to the first N characters. For us, N=6 would just barely be sufficient: UUIDs use 32 characters (a-z and 0-9), and 32^6 is 1,073,741,824 (greater than the requirement of 1B). We can increase the length of short codes to 7 if we want to scale the system. UUID generation is fast and implemented off the shelf by open-source libraries, simplifying our implementation.
+To generate a short URL for a given long URL, generate a 6-character short URL using base62 (A-Z, a-z, 0-9). This allows for >1B unique codes (>56B actually). We can increase the length of short codes to 7 if we want to scale the system.
+
+For each creation request, we will generate a short code and then check if it exists in the DB on insert using PostgreSQL's `INSERT ... ON CONFLICT DO NOTHING`. In this case, we will generate a new short code and then try again up to 10 times, then we'll return a 500 error if we still fail to find a unique code.
 
 #### 2. Ensuring redirects are fast
 
