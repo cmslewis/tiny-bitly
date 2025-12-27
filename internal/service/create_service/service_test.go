@@ -1,6 +1,7 @@
 package create_service
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -36,14 +37,14 @@ func (suite *CreateServiceSuite) SetupTest() {
 
 func (suite *CreateServiceSuite) TestErrorInputURLEmpty() {
 	originalURL := ""
-	_, err := CreateShortURL(suite.dao, originalURL, nil)
+	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
 
 func (suite *CreateServiceSuite) TestErrorInputURLInvalidChars() {
 	originalURL := "www.`.com"
-	_, err := CreateShortURL(suite.dao, originalURL, nil)
+	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
@@ -51,7 +52,7 @@ func (suite *CreateServiceSuite) TestErrorInputURLInvalidChars() {
 func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {
 	originalURL := "https://www.foo.com"
 	alias := ""
-	_, err := CreateShortURL(suite.dao, originalURL, &alias)
+	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid alias")
 }
@@ -59,18 +60,18 @@ func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {
 func (suite *CreateServiceSuite) TestErrorInputAliasInvalidChars() {
 	originalURL := "https://www.foo.com"
 	alias := "`"
-	_, err := CreateShortURL(suite.dao, originalURL, &alias)
+	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid alias")
 }
 
 func (suite *CreateServiceSuite) TestErrorInputAliasAlreadyUsedForDifferentURL() {
 	// Mock: Create() should return a specific error code.
-	suite.urlRecordDAO.EXPECT().Create(gomock.Any()).Return(nil, apperrors.ErrShortCodeAlreadyInUse)
+	suite.urlRecordDAO.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, apperrors.ErrShortCodeAlreadyInUse)
 
 	originalURL := "https://www.foo.com"
 	alias := "bar"
-	_, err := CreateShortURL(suite.dao, originalURL, &alias)
+	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "custom alias already in use")
 }
@@ -79,7 +80,7 @@ func (suite *CreateServiceSuite) TestErrorConfigAPIHostnameMissing() {
 	os.Clearenv()
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(suite.dao, originalURL, nil)
+	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "environment variable must be configured: API_HOSTNAME")
 }
@@ -91,12 +92,12 @@ func (suite *CreateServiceSuite) TestErrorMaxRetries() {
 	// Mock: Create() should fail to generate an unused short code.
 	suite.urlRecordDAO.
 		EXPECT().
-		Create(gomock.Any()).
+		Create(gomock.Any(), gomock.Any()).
 		AnyTimes().
 		Return(nil, apperrors.ErrShortCodeAlreadyInUse)
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(suite.dao, originalURL, nil)
+	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "failed to generate unique short code after maximum retries")
 }
@@ -108,14 +109,14 @@ func (suite *CreateServiceSuite) TestConfigMaxTries() {
 	// First call fails.
 	suite.urlRecordDAO.
 		EXPECT().
-		Create(gomock.Any()).
+		Create(gomock.Any(), gomock.Any()).
 		Return(nil, apperrors.ErrShortCodeAlreadyInUse).
 		Times(1)
 
 	// Second call must NEVER happen.
 	suite.urlRecordDAO.
 		EXPECT().
-		Create(gomock.Any()).
+		Create(gomock.Any(), gomock.Any()).
 		Return(
 			&model.URLRecordEntity{
 				Entity:    model.Entity{},
@@ -126,7 +127,7 @@ func (suite *CreateServiceSuite) TestConfigMaxTries() {
 		Times(0)
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(suite.dao, originalURL, nil)
+	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
 
 	suite.Error(err)
 	suite.ErrorContains(err, "failed to generate unique short code after maximum retries")
@@ -138,7 +139,7 @@ func (suite *CreateServiceSuite) TestConfigShortCodeLength() {
 
 	suite.urlRecordDAO.
 		EXPECT().
-		Create(gomock.Any()).
+		Create(gomock.Any(), gomock.Any()).
 		Return(
 			&model.URLRecordEntity{
 				Entity:    model.Entity{},
@@ -149,7 +150,7 @@ func (suite *CreateServiceSuite) TestConfigShortCodeLength() {
 		Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := CreateShortURL(suite.dao, originalURL, nil)
+	shortURL, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.Nil(err)
 	suite.NotNil(shortURL)
 	slashIndex := strings.LastIndex(*shortURL, "/")
@@ -160,7 +161,7 @@ func (suite *CreateServiceSuite) TestConfigShortCodeLength() {
 func (suite *CreateServiceSuite) TestSuccess() {
 	suite.urlRecordDAO.
 		EXPECT().
-		Create(gomock.Any()).
+		Create(gomock.Any(), gomock.Any()).
 		Return(
 			&model.URLRecordEntity{
 				Entity:    model.Entity{},
@@ -171,7 +172,7 @@ func (suite *CreateServiceSuite) TestSuccess() {
 		Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := CreateShortURL(suite.dao, originalURL, nil)
+	shortURL, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
 	suite.Nil(err)
 	suite.NotNil(shortURL)
 

@@ -10,6 +10,7 @@
 package mock_daotypes
 
 import (
+	context "context"
 	reflect "reflect"
 	model "tiny-bitly/internal/model"
 
@@ -41,31 +42,31 @@ func (m *MockURLRecordDAO) EXPECT() *MockURLRecordDAOMockRecorder {
 }
 
 // Create mocks base method.
-func (m *MockURLRecordDAO) Create(urlRecord model.URLRecord) (*model.URLRecordEntity, error) {
+func (m *MockURLRecordDAO) Create(ctx context.Context, urlRecord model.URLRecord) (*model.URLRecordEntity, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "Create", urlRecord)
+	ret := m.ctrl.Call(m, "Create", ctx, urlRecord)
 	ret0, _ := ret[0].(*model.URLRecordEntity)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // Create indicates an expected call of Create.
-func (mr *MockURLRecordDAOMockRecorder) Create(urlRecord any) *gomock.Call {
+func (mr *MockURLRecordDAOMockRecorder) Create(ctx, urlRecord any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockURLRecordDAO)(nil).Create), urlRecord)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Create", reflect.TypeOf((*MockURLRecordDAO)(nil).Create), ctx, urlRecord)
 }
 
 // GetByShortCode mocks base method.
-func (m *MockURLRecordDAO) GetByShortCode(shortCode string) (*model.URLRecordEntity, error) {
+func (m *MockURLRecordDAO) GetByShortCode(ctx context.Context, shortCode string) (*model.URLRecordEntity, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetByShortCode", shortCode)
+	ret := m.ctrl.Call(m, "GetByShortCode", ctx, shortCode)
 	ret0, _ := ret[0].(*model.URLRecordEntity)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // GetByShortCode indicates an expected call of GetByShortCode.
-func (mr *MockURLRecordDAOMockRecorder) GetByShortCode(shortCode any) *gomock.Call {
+func (mr *MockURLRecordDAOMockRecorder) GetByShortCode(ctx, shortCode any) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByShortCode", reflect.TypeOf((*MockURLRecordDAO)(nil).GetByShortCode), shortCode)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetByShortCode", reflect.TypeOf((*MockURLRecordDAO)(nil).GetByShortCode), ctx, shortCode)
 }

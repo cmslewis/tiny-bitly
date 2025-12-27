@@ -1,6 +1,9 @@
 package daotypes
 
-import "tiny-bitly/internal/model"
+import (
+	"context"
+	"tiny-bitly/internal/model"
+)
 
 // The main Data-Access Object (DAO) that contains all entity-specific DAOs.
 type DAO struct {
@@ -8,6 +11,6 @@ type DAO struct {
 }
 
 type URLRecordDAO interface {
-	Create(urlRecord model.URLRecord) (*model.URLRecordEntity, error)
-	GetByShortCode(shortCode string) (*model.URLRecordEntity, error)
+	Create(ctx context.Context, urlRecord model.URLRecord) (*model.URLRecordEntity, error)
+	GetByShortCode(ctx context.Context, shortCode string) (*model.URLRecordEntity, error)
 }

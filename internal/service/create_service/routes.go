@@ -54,7 +54,7 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Create the short URL.
-	shortURL, err := CreateShortURL(*dao, request.URL, request.Alias)
+	shortURL, err := CreateShortURL(r.Context(), *dao, request.URL, request.Alias)
 	if err != nil {
 		log.Println("Internal server error:", err.Error())
 		http.Error(w, "Failed to create URL", http.StatusInternalServerError)

@@ -1,6 +1,7 @@
 package memory
 
 import (
+	"context"
 	"sync"
 	"time"
 
@@ -24,7 +25,7 @@ func NewURLRecordMemoryDAO() *URLRecordMemoryDAO {
 	}
 }
 
-func (m *URLRecordMemoryDAO) Create(urlRecord model.URLRecord) (*model.URLRecordEntity, error) {
+func (m *URLRecordMemoryDAO) Create(_ctx context.Context, urlRecord model.URLRecord) (*model.URLRecordEntity, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -53,7 +54,7 @@ func (m *URLRecordMemoryDAO) Create(urlRecord model.URLRecord) (*model.URLRecord
 	return entity, nil
 }
 
-func (m *URLRecordMemoryDAO) GetByShortCode(shortCode string) (*model.URLRecordEntity, error) {
+func (m *URLRecordMemoryDAO) GetByShortCode(_ctx context.Context, shortCode string) (*model.URLRecordEntity, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 

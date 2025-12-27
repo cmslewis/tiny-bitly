@@ -33,7 +33,7 @@ func HandleGetURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get the original URL for this short code.
-	originalURL, err := GetOriginalURL(*dao, shortCode)
+	originalURL, err := GetOriginalURL(r.Context(), *dao, shortCode)
 	if err != nil {
 		log.Print("Internal server error: failed to lookup original URL")
 		http.Error(w, "Failed to get URL", http.StatusInternalServerError)

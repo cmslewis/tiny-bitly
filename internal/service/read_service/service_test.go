@@ -1,6 +1,7 @@
 package read_service
 
 import (
+	"context"
 	"errors"
 	"testing"
 	"tiny-bitly/internal/dao/daotypes"
@@ -32,7 +33,7 @@ func (suite *ReadServiceSuite) SetupTest() {
 
 func (suite *ReadServiceSuite) TestEmptyShortCode() {
 	shortCode := ""
-	originalURL, err := GetOriginalURL(suite.dao, shortCode)
+	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.Nil(err)
 	suite.Nil(originalURL)
 }
@@ -41,10 +42,10 @@ func (suite *ReadServiceSuite) TestGetByShortCodeError() {
 	shortCode := "abc123"
 	suite.urlRecordDAO.
 		EXPECT().
-		GetByShortCode(shortCode).
+		GetByShortCode(gomock.Any(), shortCode).
 		Return(nil, errors.New("database error"))
 
-	originalURL, err := GetOriginalURL(suite.dao, shortCode)
+	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.NotNil(err)
 	suite.Nil(originalURL)
 	suite.ErrorContains(err, "failed to get original URL by short code")
@@ -54,10 +55,10 @@ func (suite *ReadServiceSuite) TestGetByShortCodeNotFound() {
 	shortCode := "nonexistent"
 	suite.urlRecordDAO.
 		EXPECT().
-		GetByShortCode(shortCode).
+		GetByShortCode(gomock.Any(), shortCode).
 		Return(nil, nil)
 
-	originalURL, err := GetOriginalURL(suite.dao, shortCode)
+	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.Nil(err)
 	suite.Nil(originalURL)
 }
@@ -67,7 +68,7 @@ func (suite *ReadServiceSuite) TestSuccess() {
 	expectedOriginalURL := "https://www.example.com"
 	suite.urlRecordDAO.
 		EXPECT().
-		GetByShortCode(shortCode).
+		GetByShortCode(gomock.Any(), shortCode).
 		Return(
 			&model.URLRecordEntity{
 				Entity:    model.Entity{},
@@ -76,7 +77,7 @@ func (suite *ReadServiceSuite) TestSuccess() {
 			nil,
 		)
 
-	originalURL, err := GetOriginalURL(suite.dao, shortCode)
+	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
 	suite.Nil(err)
 	suite.NotNil(originalURL)
 	suite.Equal(expectedOriginalURL, *originalURL)

@@ -1,6 +1,7 @@
 package create_service
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/url"
@@ -14,6 +15,7 @@ import (
 
 // Creates and saves an alias for the provided long URL, then returns the alias.
 func CreateShortURL(
+	ctx context.Context,
 	dao daotypes.DAO,
 	originalURL string,
 	alias *string,
@@ -59,7 +61,7 @@ func CreateShortURL(
 		log.Printf("Creating a new URL record shortCode=%s expiresAt=%v", shortCode, expiresAt)
 
 		// Save a new URL record.
-		_, err = dao.URLRecordDAO.Create(model.URLRecord{
+		_, err = dao.URLRecordDAO.Create(ctx, model.URLRecord{
 			OriginalURL: *validatedURL,
 			ShortCode:   shortCode,
 			ExpiresAt:   expiresAt,
