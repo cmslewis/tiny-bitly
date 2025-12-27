@@ -5,6 +5,8 @@ import (
 	"net/http"
 	"os"
 
+	"tiny-bitly/internal/dao"
+	"tiny-bitly/internal/dao/daotypes"
 	"tiny-bitly/internal/service/create_service"
 	"tiny-bitly/internal/service/read_service"
 
@@ -18,7 +20,13 @@ func main() {
 		log.Fatal("Error loading .env file")
 	}
 
-	router := buildRouter()
+	// Initialize dependencies.
+	appDAO := dao.GetDAOOfType(dao.DAOTypeMemory)
+	if appDAO == nil {
+		log.Fatal("Failed to initialize DAO")
+	}
+
+	router := buildRouter(appDAO)
 
 	// Lookup the PORT to use.
 	port, isDefined := os.LookupEnv("API_PORT")
@@ -34,11 +42,11 @@ func main() {
 	}
 }
 
-func buildRouter() *http.ServeMux {
+func buildRouter(appDAO *daotypes.DAO) *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("POST /urls", create_service.HandlePostURL)
-	mux.HandleFunc("GET /{shortCode}", read_service.HandleGetURL)
+	mux.HandleFunc("POST /urls", create_service.NewHandlePostURL(appDAO))
+	mux.HandleFunc("GET /{shortCode}", read_service.NewHandleGetURL(appDAO))
 
 	return mux
 }

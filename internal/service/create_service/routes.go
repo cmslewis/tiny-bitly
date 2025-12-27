@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/http"
 	"tiny-bitly/internal/config"
-	"tiny-bitly/internal/dao"
+	"tiny-bitly/internal/dao/daotypes"
 )
 
 type CreateUrlRequest struct {
@@ -20,55 +20,49 @@ type CreateUrlResponse struct {
 	ShortURL string `json:"shortUrl"`
 }
 
-// Handles a POST request to create a short URL for a provided URL.
+// Creates an HTTP handler for POST /urls that uses the provided DAO.
 // - 201 Created with a CreateUrlResponse on success
 // - 400 Bad Request if the original URL is an invalid URL
 // - 400 Bad Request if the original URL is longer than 1000 chars
 // - 500 System Error if anything else fails
-func HandlePostURL(w http.ResponseWriter, r *http.Request) {
-	defer r.Body.Close()
+func NewHandlePostURL(dao *daotypes.DAO) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		defer r.Body.Close()
 
-	// Attempt to read the JSON request body.
-	request, err := readRequestJson[CreateUrlRequest](r)
-	if err != nil {
-		http.Error(w, "Malformatted request JSON", http.StatusBadRequest)
-		return
-	}
+		// Attempt to read the JSON request body.
+		request, err := readRequestJson[CreateUrlRequest](r)
+		if err != nil {
+			http.Error(w, "Malformatted request JSON", http.StatusBadRequest)
+			return
+		}
 
-	maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 1000)
-	if len(request.URL) > maxURLLength {
-		log.Print("Bad request: original URL is longer than 1000 chars")
-		http.Error(w, "URL must be no longer than 1000 chars", http.StatusBadRequest)
-		return
-	}
+		maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 1000)
+		if len(request.URL) > maxURLLength {
+			log.Print("Bad request: original URL is longer than 1000 chars")
+			http.Error(w, "URL must be no longer than 1000 chars", http.StatusBadRequest)
+			return
+		}
 
-	// Log the inbound request.
-	log.Printf("Request: URL=%s\n", request.URL)
+		// Log the inbound request.
+		log.Printf("Request: URL=%s\n", request.URL)
 
-	// Create a DAO.
-	dao := dao.GetDAOOfType(dao.DAOTypeMemory)
-	if dao == nil {
-		log.Println("Internal server error: failed to get DAO")
-		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
-		return
-	}
+		// Create the short URL.
+		shortURL, err := CreateShortURL(r.Context(), *dao, request.URL, request.Alias)
+		if err != nil {
+			log.Println("Internal server error:", err.Error())
+			http.Error(w, "Failed to create URL", http.StatusInternalServerError)
+			return
+		}
 
-	// Create the short URL.
-	shortURL, err := CreateShortURL(r.Context(), *dao, request.URL, request.Alias)
-	if err != nil {
-		log.Println("Internal server error:", err.Error())
-		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
-		return
-	}
-
-	// Send the JSON response.
-	w.WriteHeader(http.StatusCreated)
-	err = writeResponseJson(w, CreateUrlResponse{
-		ShortURL: *shortURL,
-	})
-	if err != nil {
-		http.Error(w, "Failed to create URL", http.StatusInternalServerError)
-		return
+		// Send the JSON response.
+		w.WriteHeader(http.StatusCreated)
+		err = writeResponseJson(w, CreateUrlResponse{
+			ShortURL: *shortURL,
+		})
+		if err != nil {
+			http.Error(w, "Failed to create URL", http.StatusInternalServerError)
+			return
+		}
 	}
 }
 
