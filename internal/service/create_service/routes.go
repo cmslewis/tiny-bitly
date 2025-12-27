@@ -21,7 +21,7 @@ type CreateUrlResponse struct {
 }
 
 // Handles a POST request to create a short URL for a provided URL.
-// - 200 OK with a CreateUrlResponse on success
+// - 201 Created with a CreateUrlResponse on success
 // - 400 Bad Request if the original URL is an invalid URL
 // - 400 Bad Request if the original URL is longer than 1000 chars
 // - 500 System Error if anything else fails
@@ -62,6 +62,7 @@ func HandlePostURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Send the JSON response.
+	w.WriteHeader(http.StatusCreated)
 	err = writeResponseJson(w, CreateUrlResponse{
 		ShortURL: *shortURL,
 	})
@@ -86,7 +87,6 @@ func readRequestJson[T any](r *http.Request) (*T, error) {
 // Writes a JSON object of type T to the provided HTTP response.
 // Returns an error if encoding fails.
 func writeResponseJson[T any](w http.ResponseWriter, body T) error {
-	w.WriteHeader(http.StatusCreated)
 	w.Header().Set("Content-Type", "application/json")
 
 	// Send the JSON response - or an error.
