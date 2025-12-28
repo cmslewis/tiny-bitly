@@ -31,6 +31,12 @@ func main() {
 		logFatal("Failed to load configuration", "error", err)
 	}
 
+	// Configure slog handler.
+	logHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: config.LogLevel,
+	})
+	slog.SetDefault(slog.New(logHandler))
+
 	// Initialize dependencies.
 	appDAO := dao.NewMemoryDAO()
 

@@ -72,7 +72,7 @@ func (s *Service) CreateShortURL(
 		// Set expiration time based on configured TTL.
 		expiresAt := time.Now().Add(shortCodeTTL)
 
-		middleware.LogWithRequestID(ctx, "Creating a new URL record", "shortCode", shortCode, "expiresAt", expiresAt)
+		middleware.LogDebugWithRequestID(ctx, "Creating a new URL record", "shortCode", shortCode, "expiresAt", expiresAt)
 
 		// Save a new URL record.
 		_, err = s.dao.URLRecordDAO.Create(ctx, model.URLRecord{

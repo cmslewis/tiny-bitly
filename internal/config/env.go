@@ -40,3 +40,12 @@ func getStringEnv(key string) (string, error) {
 	}
 	return valueStr, nil
 }
+
+// Retrieves a string environment variable, or returns the default if not set.
+func getStringEnvOrDefault(key, defaultValue string) string {
+	valueStr := os.Getenv(key)
+	if valueStr == "" {
+		return defaultValue
+	}
+	return valueStr
+}

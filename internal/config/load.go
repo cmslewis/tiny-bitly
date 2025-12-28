@@ -1,6 +1,7 @@
 package config
 
 import (
+	"log/slog"
 	"time"
 	"tiny-bitly/internal/apperrors"
 )
@@ -9,6 +10,7 @@ type Config struct {
 	// Server
 	APIPort     int
 	APIHostname string
+	LogLevel    slog.Leveler
 
 	// Limits
 	MaxTriesCreateShortCode int
@@ -33,6 +35,7 @@ func LoadConfig() (*Config, error) {
 	}
 
 	port := getIntEnvOrDefault("API_PORT", defaultAPIPort)
+	logLevel := getStringEnvOrDefault("LOG_LEVEL", defaultLogLevel)
 
 	maxTries := getIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", defaultMaxTriesCreateShortCode)
 	maxURLLength := getIntEnvOrDefault("MAX_URL_LENGTH", defaultMaxUrlLength)
@@ -48,6 +51,7 @@ func LoadConfig() (*Config, error) {
 	return &Config{
 		APIPort:     port,
 		APIHostname: hostname,
+		LogLevel:    getLogLevelTyped(logLevel),
 
 		MaxTriesCreateShortCode: maxTries,
 		MaxURLLength:            maxURLLength,
@@ -60,4 +64,11 @@ func LoadConfig() (*Config, error) {
 		ShutdownTimeout: shutdownTimeout,
 		WriteTimeout:    writeTimeout,
 	}, nil
+}
+
+func getLogLevelTyped(logLevel string) slog.Level {
+	if logLevel == "debug" {
+		return slog.LevelDebug
+	}
+	return slog.LevelInfo
 }

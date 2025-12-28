@@ -7,6 +7,7 @@ import (
 
 var defaultAPIPort int = 8080
 var defaultAPIHostname string = fmt.Sprintf("http://localhost:%d", defaultAPIPort)
+var defaultLogLevel string = "info"
 var defaultMaxTriesCreateShortCode int = 10
 var defaultMaxUrlLength int = 1000
 var defaultShortCodeLength int = 6
@@ -22,6 +23,7 @@ func GetDefaultConfig() Config {
 	return Config{
 		APIPort:                 defaultAPIPort,
 		APIHostname:             defaultAPIHostname,
+		LogLevel:                getLogLevelTyped(defaultLogLevel),
 		MaxTriesCreateShortCode: defaultMaxTriesCreateShortCode,
 		MaxURLLength:            defaultMaxUrlLength,
 		ShortCodeLength:         defaultShortCodeLength,

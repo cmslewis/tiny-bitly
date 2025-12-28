@@ -34,7 +34,7 @@ func (s *Service) GetOriginalURL(ctx context.Context, shortCode string) (*string
 	}
 
 	if urlRecord == nil {
-		middleware.LogWithRequestID(ctx, "URL record is nil for short code", "shortCode", shortCode)
+		middleware.LogDebugWithRequestID(ctx, "URL record is nil for short code", "shortCode", shortCode)
 		return nil, apperrors.ErrShortCodeNotFound
 	}
 
