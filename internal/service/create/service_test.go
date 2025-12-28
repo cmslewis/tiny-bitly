@@ -2,13 +2,13 @@ package create
 
 import (
 	"context"
-	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"tiny-bitly/internal/apperrors"
+	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
 	mock_daotypes "tiny-bitly/internal/dao/generated"
+	"tiny-bitly/internal/middleware"
 	"tiny-bitly/internal/model"
 
 	"github.com/stretchr/testify/suite"
@@ -17,6 +17,7 @@ import (
 
 type CreateServiceSuite struct {
 	suite.Suite
+	ctx          context.Context
 	ctrl         *gomock.Controller
 	dao          dao.DAO
 	urlRecordDAO *mock_daotypes.MockURLRecordDAO
@@ -27,8 +28,7 @@ func TestCreateServiceSuite(t *testing.T) {
 }
 
 func (suite *CreateServiceSuite) SetupTest() {
-	os.Clearenv()
-	os.Setenv("API_HOSTNAME", "http://localhost:8080")
+	suite.ctx = ContextWithConfig(config.Config{})
 	suite.ctrl = gomock.NewController(suite.T())
 	suite.urlRecordDAO = mock_daotypes.NewMockURLRecordDAO(suite.ctrl)
 	suite.dao = dao.DAO{
@@ -38,40 +38,40 @@ func (suite *CreateServiceSuite) SetupTest() {
 
 func (suite *CreateServiceSuite) TestErrorInputURLEmpty() {
 	originalURL := ""
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
 
 func (suite *CreateServiceSuite) TestErrorInputURLInvalidChars() {
 	originalURL := "www.`.com"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
 
 func (suite *CreateServiceSuite) TestErrorInputURLTooLong() {
-	os.Setenv("MAX_URL_LENGTH", "2")
+	ctx := ContextWithConfig(config.Config{MaxURLLength: 2})
 	originalURL := "abc"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := CreateShortURL(ctx, suite.dao, originalURL, nil)
 	suite.NotNil(err)
-	suite.ErrorContains(err, "URL must be shorter than 2 chars")
+	suite.ErrorIs(err, apperrors.ErrURLLengthExceeded)
 }
 
 func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {
 	originalURL := "https://www.foo.com"
 	alias := ""
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, &alias)
+	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, &alias)
 	suite.NotNil(err)
-	suite.ErrorContains(err, "invalid alias")
+	suite.ErrorIs(err, apperrors.ErrInvalidAlias)
 }
 
 func (suite *CreateServiceSuite) TestErrorInputAliasInvalidChars() {
 	originalURL := "https://www.foo.com"
 	alias := "`"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, &alias)
+	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, &alias)
 	suite.NotNil(err)
-	suite.ErrorContains(err, "invalid alias")
+	suite.ErrorIs(err, apperrors.ErrInvalidAlias)
 }
 
 func (suite *CreateServiceSuite) TestErrorInputAliasAlreadyUsedForDifferentURL() {
@@ -80,86 +80,60 @@ func (suite *CreateServiceSuite) TestErrorInputAliasAlreadyUsedForDifferentURL()
 
 	originalURL := "https://www.foo.com"
 	alias := "bar"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, &alias)
+	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, &alias)
 	suite.NotNil(err)
-	suite.ErrorContains(err, "custom alias already in use")
+	suite.ErrorIs(err, apperrors.ErrAliasAlreadyInUse)
 }
 
 func (suite *CreateServiceSuite) TestErrorConfigAPIHostnameMissing() {
-	os.Clearenv()
+	// HACK: Set the API Hostname to empty string.
+	cfg := config.GetTestConfig(config.Config{})
+	cfg.APIHostname = ""
+	ctx := middleware.SetConfigInContextForTesting(context.Background(), cfg)
+
+	suite.MockCreateSuccess().Times(0)
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := CreateShortURL(ctx, suite.dao, originalURL, nil)
 	suite.NotNil(err)
-	suite.ErrorContains(err, "environment variable must be configured: API_HOSTNAME")
+	suite.ErrorIs(err, apperrors.ErrConfigurationMissing)
 }
 
 func (suite *CreateServiceSuite) TestErrorMaxRetries() {
-	// Set a low max tries to test the retry limit.
-	os.Setenv("MAX_TRIES_CREATE_SHORT_CODE", "3")
-
 	// Mock: Create() should fail to generate an unused short code.
-	suite.urlRecordDAO.
-		EXPECT().
-		Create(gomock.Any(), gomock.Any()).
-		AnyTimes().
-		Return(nil, apperrors.ErrShortCodeAlreadyInUse)
+	suite.MockCreateFail().AnyTimes()
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, nil)
 	suite.NotNil(err)
-	suite.ErrorContains(err, "failed to generate unique short code after maximum retries")
+	suite.ErrorIs(err, apperrors.ErrMaxRetriesExceeded)
 }
 
 func (suite *CreateServiceSuite) TestConfigMaxTries() {
 	// Allow only a single attempt.
-	os.Setenv("MAX_TRIES_CREATE_SHORT_CODE", "1")
+	ctx := ContextWithConfig(config.Config{MaxTriesCreateShortCode: 1})
 
 	// First call fails.
-	suite.urlRecordDAO.
-		EXPECT().
-		Create(gomock.Any(), gomock.Any()).
-		Return(nil, apperrors.ErrShortCodeAlreadyInUse).
-		Times(1)
+	suite.MockCreateFail().Times(1)
 
 	// Second call must NEVER happen.
-	suite.urlRecordDAO.
-		EXPECT().
-		Create(gomock.Any(), gomock.Any()).
-		Return(
-			&model.URLRecordEntity{
-				Entity:    model.Entity{},
-				URLRecord: model.URLRecord{ShortCode: "myUniqueCode"},
-			},
-			nil,
-		).
-		Times(0)
+	suite.MockCreateSuccess().Times(0)
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	_, err := CreateShortURL(ctx, suite.dao, originalURL, nil)
 
 	suite.Error(err)
-	suite.ErrorContains(err, "failed to generate unique short code after maximum retries")
+	suite.ErrorIs(err, apperrors.ErrMaxRetriesExceeded)
 }
 
 func (suite *CreateServiceSuite) TestConfigShortCodeLength() {
 	customShortCodeLength := 8
-	os.Setenv("SHORT_CODE_LENGTH", fmt.Sprintf("%d", customShortCodeLength))
+	ctx := ContextWithConfig(config.Config{ShortCodeLength: customShortCodeLength})
 
-	suite.urlRecordDAO.
-		EXPECT().
-		Create(gomock.Any(), gomock.Any()).
-		Return(
-			&model.URLRecordEntity{
-				Entity:    model.Entity{},
-				URLRecord: model.URLRecord{},
-			},
-			nil,
-		).
-		Times(1)
+	suite.MockCreateSuccess().Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	shortURL, err := CreateShortURL(ctx, suite.dao, originalURL, nil)
 	suite.Nil(err)
 	suite.NotNil(shortURL)
 	slashIndex := strings.LastIndex(*shortURL, "/")
@@ -168,20 +142,10 @@ func (suite *CreateServiceSuite) TestConfigShortCodeLength() {
 }
 
 func (suite *CreateServiceSuite) TestSuccess() {
-	suite.urlRecordDAO.
-		EXPECT().
-		Create(gomock.Any(), gomock.Any()).
-		Return(
-			&model.URLRecordEntity{
-				Entity:    model.Entity{},
-				URLRecord: model.URLRecord{},
-			},
-			nil,
-		).
-		Times(1)
+	suite.MockCreateSuccess().Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := CreateShortURL(context.Background(), suite.dao, originalURL, nil)
+	shortURL, err := CreateShortURL(suite.ctx, suite.dao, originalURL, nil)
 	suite.Nil(err)
 	suite.NotNil(shortURL)
 
@@ -193,4 +157,31 @@ func (suite *CreateServiceSuite) TestSuccess() {
 	shortCode := (*shortURL)[slashIndex+1:]
 	suite.Len(shortCode, 6)
 	suite.NotEmpty(shortCode)
+}
+
+func (suite *CreateServiceSuite) MockCreateFail() *gomock.Call {
+	return suite.urlRecordDAO.
+		EXPECT().
+		Create(gomock.Any(), gomock.Any()).
+		AnyTimes().
+		Return(nil, apperrors.ErrShortCodeAlreadyInUse)
+}
+
+func (suite *CreateServiceSuite) MockCreateSuccess() *gomock.Call {
+	return suite.urlRecordDAO.
+		EXPECT().
+		Create(gomock.Any(), gomock.Any()).
+		Return(
+			&model.URLRecordEntity{
+				Entity:    model.Entity{},
+				URLRecord: model.URLRecord{},
+			},
+			nil,
+		)
+}
+
+func ContextWithConfig(cfg config.Config) context.Context {
+	ctx := context.Background()
+	newCfg := config.GetTestConfig(cfg)
+	return middleware.SetConfigInContextForTesting(ctx, newCfg)
 }

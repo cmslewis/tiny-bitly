@@ -6,7 +6,6 @@ import (
 	"net/url"
 	"time"
 	"tiny-bitly/internal/apperrors"
-	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/middleware"
 	"tiny-bitly/internal/model"
@@ -25,20 +24,22 @@ func CreateShortURL(
 		return nil, apperrors.ErrInvalidURL
 	}
 
-	// Read environment variables.
-	maxTries := config.GetIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", 10)
-	maxURLLength := config.GetIntEnvOrDefault("MAX_URL_LENGTH", 1000)
-	shortCodeLength := config.GetIntEnvOrDefault("SHORT_CODE_LENGTH", 6)
-	shortCodeTTL := config.GetDurationEnvOrDefault("SHORT_CODE_TTL_MILLIS", 30000)
+	// Read environment variables from context.
+	config, err := middleware.GetConfigFromContext(ctx)
+	if err != nil {
+		return nil, apperrors.ErrConfigurationMissing
+	}
+	hostname := config.APIHostname
+	if hostname == "" {
+		return nil, apperrors.ErrConfigurationMissing
+	}
+	maxTries := config.MaxTriesCreateShortCode
+	maxURLLength := config.MaxURLLength
+	shortCodeLength := config.ShortCodeLength
+	shortCodeTTL := config.ShortCodeTTL
 
 	if len(originalURL) > maxURLLength {
 		return nil, apperrors.ErrURLLengthExceeded
-	}
-
-	// Get the URL of our client-facing service.
-	hostname, err := config.GetStringEnv("API_HOSTNAME")
-	if err != nil {
-		return nil, apperrors.ErrConfigurationMissing
 	}
 
 	// If a custom alias was provided, validate it.

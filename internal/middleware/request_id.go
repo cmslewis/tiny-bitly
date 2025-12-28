@@ -7,9 +7,7 @@ import (
 	"net/http"
 )
 
-type contextKey string
-
-const requestIDKey contextKey = "requestID"
+const requestIDKey contextType = "requestID"
 
 // Generates a unique request ID for each request and adds it to:
 // 1. The request context (for use in handlers/services)

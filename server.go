@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
@@ -25,6 +26,10 @@ func main() {
 	if err != nil {
 		log.Fatal("Error loading .env file")
 	}
+	config, err := config.LoadConfig()
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Initialize dependencies.
 	appDAO := dao.GetDAOOfType(dao.DAOTypeMemory)
@@ -34,29 +39,26 @@ func main() {
 
 	router := buildRouter(appDAO)
 
-	// Wrap router with request-tracing middleware. Request ID middleware should
-	// be applied early so other middleware/handlers can use it.
+	// Middleware: Generate a Request ID for each request (apply first so other
+	// handlers can use it).
 	handler := middleware.RequestIDMiddleware(router)
 
-	port := config.GetIntEnvOrDefault("API_PORT", 8080)
-	idleTimeout := config.GetDurationEnvOrDefault("TIMEOUT_IDLE_MILLIS", 60000)
-	requestTimeout := config.GetDurationEnvOrDefault("TIMEOUT_REQUEST_MILLIS", 30000)
-	readTimeout := config.GetDurationEnvOrDefault("TIMEOUT_READ_MILLIS", 30000)
-	writeTimeout := config.GetDurationEnvOrDefault("TIMEOUT_WRITE_MILLIS", 30000)
+	// Middleware: Load config into each request's context.
+	handler = middleware.ConfigMiddleware(handler, *config)
 
 	// Configure HTTP server with timeouts.
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", port),
-		Handler:      http.TimeoutHandler(handler, requestTimeout, "Request timeout"),
-		ReadTimeout:  readTimeout,
-		WriteTimeout: writeTimeout,
-		IdleTimeout:  idleTimeout,
+		Addr:         fmt.Sprintf(":%d", config.APIPort),
+		Handler:      http.TimeoutHandler(handler, config.RequestTimeout, "Request timeout"),
+		ReadTimeout:  config.ReadTimeout,
+		WriteTimeout: config.WriteTimeout,
+		IdleTimeout:  config.IdleTimeout,
 	}
 
 	// Start server in a goroutine so we can handle shutdown signals.
 	errChannel := make(chan error, 1)
 	go func() {
-		log.Printf("Server starting on port %d\n", port)
+		log.Printf("Server starting on port %d\n", config.APIPort)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errChannel <- err
 		}
@@ -70,7 +72,7 @@ func main() {
 	case err := <-errChannel:
 		handleServerError(err)
 	case sig := <-quitChannel:
-		handleQuitSignal(server, sig)
+		handleQuitSignal(server, sig, config.ShutdownTimeout)
 	}
 }
 
@@ -80,11 +82,10 @@ func handleServerError(err error) {
 }
 
 // Attempts to gracefully shut down the server.
-func handleQuitSignal(server *http.Server, sig os.Signal) {
+func handleQuitSignal(server *http.Server, sig os.Signal, shutdownTimeout time.Duration) {
 	log.Printf("Received signal: %v. Shutting down gracefully...\n", sig)
 
 	// Create a context with timeout for graceful shutdown.
-	shutdownTimeout := config.GetDurationEnvOrDefault("TIMEOUT_SHUTDOWN_MILLIS", 30000)
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
 	defer cancel()
 
