@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"tiny-bitly/internal/apperrors"
 	"tiny-bitly/internal/dao"
 	mock_daotypes "tiny-bitly/internal/dao/generated"
 	"tiny-bitly/internal/model"
@@ -50,7 +51,7 @@ func (suite *ReadServiceSuite) TestGetByShortCodeError() {
 	originalURL, err := suite.service.GetOriginalURL(context.Background(), shortCode)
 	suite.NotNil(err)
 	suite.Nil(originalURL)
-	suite.ErrorContains(err, "data store unavailable")
+	suite.ErrorIs(err, apperrors.ErrDataStoreUnavailable)
 }
 
 func (suite *ReadServiceSuite) TestGetByShortCodeNotFound() {
@@ -63,7 +64,7 @@ func (suite *ReadServiceSuite) TestGetByShortCodeNotFound() {
 	originalURL, err := suite.service.GetOriginalURL(context.Background(), shortCode)
 	suite.NotNil(err)
 	suite.Nil(originalURL)
-	suite.ErrorContains(err, "short code not found")
+	suite.ErrorIs(err, apperrors.ErrShortCodeNotFound)
 }
 
 func (suite *ReadServiceSuite) TestSuccess() {

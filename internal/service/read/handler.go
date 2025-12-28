@@ -23,7 +23,7 @@ func NewGetURLHandler(service *Service) http.HandlerFunc {
 		}
 
 		// Log the inbound request.
-		middleware.LogWithRequestID(r.Context(), "Resolving short URL with code: %s", shortCode)
+		middleware.LogWithRequestID(r.Context(), "Resolving short URL with code", "shortCode", shortCode)
 
 		// Get the original URL for this short code.
 		originalURL, err := service.GetOriginalURL(r.Context(), shortCode)
@@ -34,7 +34,7 @@ func NewGetURLHandler(service *Service) http.HandlerFunc {
 
 		// Return 404 if original URL not found.
 		if originalURL == nil {
-			middleware.LogWithRequestID(r.Context(), "No URL found for short code '%s'", shortCode)
+			middleware.LogWithRequestID(r.Context(), "No URL found for short code", "shortCode", shortCode)
 			http.Error(w, "No URL found for short code", http.StatusNotFound)
 			return
 		}

@@ -3,7 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
@@ -24,11 +24,11 @@ func main() {
 	// Load environment variables.
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatal("Error loading .env file")
+		logFatal("Failed to load .env file", "error", err)
 	}
 	config, err := config.LoadConfig()
 	if err != nil {
-		log.Fatal(err)
+		logFatal("Failed to load configuration", "error", err)
 	}
 
 	// Initialize dependencies.
@@ -57,7 +57,7 @@ func main() {
 	// Start server in a goroutine so we can handle shutdown signals.
 	errChannel := make(chan error, 1)
 	go func() {
-		log.Printf("Server starting on port %d\n", config.APIPort)
+		slog.Info("Server starting", "port", config.APIPort)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errChannel <- err
 		}
@@ -77,12 +77,12 @@ func main() {
 
 // Kills the server when a fatal runtime error occurs.
 func handleServerError(err error) {
-	log.Fatalf("Server error: %v\n", err)
+	logFatal("Server error", "error", err)
 }
 
 // Attempts to gracefully shut down the server.
 func handleQuitSignal(server *http.Server, sig os.Signal, shutdownTimeout time.Duration) {
-	log.Printf("Received signal: %v. Shutting down gracefully...\n", sig)
+	slog.Info("Received quit signal. Shutting down gracefully...", "signal", sig)
 
 	// Create a context with timeout for graceful shutdown.
 	ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
@@ -90,15 +90,15 @@ func handleQuitSignal(server *http.Server, sig os.Signal, shutdownTimeout time.D
 
 	// Attempt graceful shutdown.
 	if err := server.Shutdown(ctx); err != nil {
-		log.Printf("Error during server shutdown: %v\n", err)
+		slog.Error("Error during server shutdown", "error", err)
 		// Force close if graceful shutdown fails.
 		if closeErr := server.Close(); closeErr != nil {
-			log.Fatalf("Error forcing server close: %v\n", closeErr)
+			logFatal("Error forcing server close", "error", closeErr)
 		}
-		log.Fatal("Server forced to close")
+		logFatal("Server forced to close")
 	}
 
-	log.Println("Server shutdown complete")
+	slog.Info("Server shutdown complete")
 }
 
 func buildRouter(createService *create.Service, readService *read.Service, healthService *health.Service) *http.ServeMux {
@@ -113,4 +113,10 @@ func buildRouter(createService *create.Service, readService *read.Service, healt
 	mux.HandleFunc("GET /{shortCode}", read.NewGetURLHandler(readService))
 
 	return mux
+}
+
+// logFatal logs an error using structured logging and exits the program with code 1.
+func logFatal(msg string, args ...any) {
+	slog.Error(msg, args...)
+	os.Exit(1)
 }

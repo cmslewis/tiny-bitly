@@ -34,7 +34,7 @@ func NewPostURLHandler(service *Service) http.HandlerFunc {
 		}
 
 		// Log the inbound request.
-		middleware.LogWithRequestID(r.Context(), "Request: URL=%s", request.URL)
+		middleware.LogWithRequestID(r.Context(), "Request received", "requestURL", request.URL)
 
 		// Create the short URL.
 		shortURL, err := service.CreateShortURL(r.Context(), request.URL, request.Alias)

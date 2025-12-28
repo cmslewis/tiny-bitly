@@ -29,12 +29,12 @@ func (s *Service) GetOriginalURL(ctx context.Context, shortCode string) (*string
 	// Lookup in the data store.
 	urlRecord, err := s.dao.URLRecordDAO.GetByShortCode(ctx, shortCode)
 	if err != nil {
-		middleware.LogWithRequestID(ctx, "Failed to get URL record for short code %s: %v", shortCode, err)
+		middleware.LogErrorWithRequestID(ctx, err, "Failed to get URL record for short code", "shortCode", shortCode)
 		return nil, apperrors.ErrDataStoreUnavailable
 	}
 
 	if urlRecord == nil {
-		middleware.LogWithRequestID(ctx, "URL record is nil for short code %s", shortCode)
+		middleware.LogWithRequestID(ctx, "URL record is nil for short code", "shortCode", shortCode)
 		return nil, apperrors.ErrShortCodeNotFound
 	}
 
