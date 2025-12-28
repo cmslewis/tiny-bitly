@@ -34,14 +34,16 @@ func main() {
 	// Initialize dependencies.
 	appDAO := dao.NewMemoryDAO()
 
-	router := buildRouter(appDAO)
+	// Initialize services.
+	createService := create.NewService(*appDAO, config)
+	readService := read.NewService(*appDAO)
+	healthService := health.NewService(*appDAO)
+
+	router := buildRouter(createService, readService, healthService)
 
 	// Middleware: Generate a Request ID for each request (apply first so other
 	// handlers can use it).
 	handler := middleware.RequestIDMiddleware(router)
-
-	// Middleware: Load config into each request's context.
-	handler = middleware.ConfigMiddleware(handler, *config)
 
 	// Configure HTTP server with timeouts.
 	server := &http.Server{
@@ -99,16 +101,16 @@ func handleQuitSignal(server *http.Server, sig os.Signal, shutdownTimeout time.D
 	log.Println("Server shutdown complete")
 }
 
-func buildRouter(appDAO *dao.DAO) *http.ServeMux {
+func buildRouter(createService *create.Service, readService *read.Service, healthService *health.Service) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Health check endpoints
-	mux.HandleFunc("GET /health", health.NewHandleGetHealth(appDAO))
-	mux.HandleFunc("GET /ready", health.NewHandleGetReady(appDAO))
+	mux.HandleFunc("GET /health", health.NewGetHealthHandler(healthService))
+	mux.HandleFunc("GET /ready", health.NewGetReadyHandler(healthService))
 
 	// Application endpoints
-	mux.HandleFunc("POST /urls", create.NewHandlePostURL(appDAO))
-	mux.HandleFunc("GET /{shortCode}", read.NewHandleGetURL(appDAO))
+	mux.HandleFunc("POST /urls", create.NewPostURLHandler(createService))
+	mux.HandleFunc("GET /{shortCode}", read.NewGetURLHandler(readService))
 
 	return mux
 }

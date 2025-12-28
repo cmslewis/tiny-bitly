@@ -7,15 +7,27 @@ import (
 	"tiny-bitly/internal/middleware"
 )
 
-// Gets the original URL from a short code, or returns nil if one does not exist.
-func GetOriginalURL(ctx context.Context, dao dao.DAO, shortCode string) (*string, error) {
+// Service handles URL lookup operations.
+type Service struct {
+	dao dao.DAO
+}
+
+// NewService creates a new read service with the provided dependencies.
+func NewService(dao dao.DAO) *Service {
+	return &Service{
+		dao: dao,
+	}
+}
+
+// GetOriginalURL gets the original URL from a short code, or returns nil if one does not exist.
+func (s *Service) GetOriginalURL(ctx context.Context, shortCode string) (*string, error) {
 	// Validate the short code.
 	if shortCode == "" {
 		return nil, nil
 	}
 
 	// Lookup in the data store.
-	urlRecord, err := dao.URLRecordDAO.GetByShortCode(ctx, shortCode)
+	urlRecord, err := s.dao.URLRecordDAO.GetByShortCode(ctx, shortCode)
 	if err != nil {
 		middleware.LogWithRequestID(ctx, "Failed to get URL record for short code %s: %v", shortCode, err)
 		return nil, apperrors.ErrDataStoreUnavailable

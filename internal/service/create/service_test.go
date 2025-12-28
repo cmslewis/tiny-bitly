@@ -8,7 +8,6 @@ import (
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
 	mock_daotypes "tiny-bitly/internal/dao/generated"
-	"tiny-bitly/internal/middleware"
 	"tiny-bitly/internal/model"
 
 	"github.com/stretchr/testify/suite"
@@ -19,6 +18,7 @@ type CreateServiceSuite struct {
 	suite.Suite
 	ctx          context.Context
 	ctrl         *gomock.Controller
+	service      *Service
 	dao          dao.DAO
 	urlRecordDAO *mock_daotypes.MockURLRecordDAO
 }
@@ -28,32 +28,35 @@ func TestCreateServiceSuite(t *testing.T) {
 }
 
 func (suite *CreateServiceSuite) SetupTest() {
-	suite.ctx = ContextWithConfig(config.Config{})
+	suite.ctx = context.Background()
 	suite.ctrl = gomock.NewController(suite.T())
 	suite.urlRecordDAO = mock_daotypes.NewMockURLRecordDAO(suite.ctrl)
 	suite.dao = dao.DAO{
 		URLRecordDAO: suite.urlRecordDAO,
 	}
+	cfg := config.GetTestConfig(config.Config{})
+	suite.service = NewService(suite.dao, &cfg)
 }
 
 func (suite *CreateServiceSuite) TestErrorInputURLEmpty() {
 	originalURL := ""
-	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, nil)
+	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
 
 func (suite *CreateServiceSuite) TestErrorInputURLInvalidChars() {
 	originalURL := "www.`.com"
-	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, nil)
+	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
 
 func (suite *CreateServiceSuite) TestErrorInputURLTooLong() {
-	ctx := ContextWithConfig(config.Config{MaxURLLength: 2})
+	cfg := config.GetTestConfig(config.Config{MaxURLLength: 2})
+	service := NewService(suite.dao, &cfg)
 	originalURL := "abc"
-	_, err := CreateShortURL(ctx, suite.dao, originalURL, nil)
+	_, err := service.CreateShortURL(suite.ctx, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrURLLengthExceeded)
 }
@@ -61,7 +64,7 @@ func (suite *CreateServiceSuite) TestErrorInputURLTooLong() {
 func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {
 	originalURL := "https://www.foo.com"
 	alias := ""
-	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, &alias)
+	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrInvalidAlias)
 }
@@ -69,7 +72,7 @@ func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {
 func (suite *CreateServiceSuite) TestErrorInputAliasInvalidChars() {
 	originalURL := "https://www.foo.com"
 	alias := "`"
-	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, &alias)
+	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrInvalidAlias)
 }
@@ -80,7 +83,7 @@ func (suite *CreateServiceSuite) TestErrorInputAliasAlreadyUsedForDifferentURL()
 
 	originalURL := "https://www.foo.com"
 	alias := "bar"
-	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, &alias)
+	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrAliasAlreadyInUse)
 }
@@ -89,12 +92,12 @@ func (suite *CreateServiceSuite) TestErrorConfigAPIHostnameMissing() {
 	// HACK: Set the API Hostname to empty string.
 	cfg := config.GetTestConfig(config.Config{})
 	cfg.APIHostname = ""
-	ctx := middleware.SetConfigInContextForTesting(context.Background(), cfg)
+	service := NewService(suite.dao, &cfg)
 
 	suite.MockCreateSuccess().Times(0)
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(ctx, suite.dao, originalURL, nil)
+	_, err := service.CreateShortURL(suite.ctx, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrConfigurationMissing)
 }
@@ -104,14 +107,15 @@ func (suite *CreateServiceSuite) TestErrorMaxRetries() {
 	suite.MockCreateFail().AnyTimes()
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(suite.ctx, suite.dao, originalURL, nil)
+	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrMaxRetriesExceeded)
 }
 
 func (suite *CreateServiceSuite) TestConfigMaxTries() {
 	// Allow only a single attempt.
-	ctx := ContextWithConfig(config.Config{MaxTriesCreateShortCode: 1})
+	cfg := config.GetTestConfig(config.Config{MaxTriesCreateShortCode: 1})
+	service := NewService(suite.dao, &cfg)
 
 	// First call fails.
 	suite.MockCreateFail().Times(1)
@@ -120,7 +124,7 @@ func (suite *CreateServiceSuite) TestConfigMaxTries() {
 	suite.MockCreateSuccess().Times(0)
 
 	originalURL := "https://www.foo.com"
-	_, err := CreateShortURL(ctx, suite.dao, originalURL, nil)
+	_, err := service.CreateShortURL(suite.ctx, originalURL, nil)
 
 	suite.Error(err)
 	suite.ErrorIs(err, apperrors.ErrMaxRetriesExceeded)
@@ -128,12 +132,13 @@ func (suite *CreateServiceSuite) TestConfigMaxTries() {
 
 func (suite *CreateServiceSuite) TestConfigShortCodeLength() {
 	customShortCodeLength := 8
-	ctx := ContextWithConfig(config.Config{ShortCodeLength: customShortCodeLength})
+	cfg := config.GetTestConfig(config.Config{ShortCodeLength: customShortCodeLength})
+	service := NewService(suite.dao, &cfg)
 
 	suite.MockCreateSuccess().Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := CreateShortURL(ctx, suite.dao, originalURL, nil)
+	shortURL, err := service.CreateShortURL(suite.ctx, originalURL, nil)
 	suite.Nil(err)
 	suite.NotNil(shortURL)
 	slashIndex := strings.LastIndex(*shortURL, "/")
@@ -145,7 +150,7 @@ func (suite *CreateServiceSuite) TestSuccess() {
 	suite.MockCreateSuccess().Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := CreateShortURL(suite.ctx, suite.dao, originalURL, nil)
+	shortURL, err := suite.service.CreateShortURL(suite.ctx, originalURL, nil)
 	suite.Nil(err)
 	suite.NotNil(shortURL)
 
@@ -178,10 +183,4 @@ func (suite *CreateServiceSuite) MockCreateSuccess() *gomock.Call {
 			},
 			nil,
 		)
-}
-
-func ContextWithConfig(cfg config.Config) context.Context {
-	ctx := context.Background()
-	newCfg := config.GetTestConfig(cfg)
-	return middleware.SetConfigInContextForTesting(ctx, newCfg)
 }

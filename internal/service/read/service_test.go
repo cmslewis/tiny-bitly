@@ -15,6 +15,7 @@ import (
 type ReadServiceSuite struct {
 	suite.Suite
 	ctrl         *gomock.Controller
+	service      *Service
 	dao          dao.DAO
 	urlRecordDAO *mock_daotypes.MockURLRecordDAO
 }
@@ -29,11 +30,12 @@ func (suite *ReadServiceSuite) SetupTest() {
 	suite.dao = dao.DAO{
 		URLRecordDAO: suite.urlRecordDAO,
 	}
+	suite.service = NewService(suite.dao)
 }
 
 func (suite *ReadServiceSuite) TestEmptyShortCode() {
 	shortCode := ""
-	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := suite.service.GetOriginalURL(context.Background(), shortCode)
 	suite.Nil(err)
 	suite.Nil(originalURL)
 }
@@ -45,7 +47,7 @@ func (suite *ReadServiceSuite) TestGetByShortCodeError() {
 		GetByShortCode(gomock.Any(), shortCode).
 		Return(nil, errors.New("database error"))
 
-	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := suite.service.GetOriginalURL(context.Background(), shortCode)
 	suite.NotNil(err)
 	suite.Nil(originalURL)
 	suite.ErrorContains(err, "data store unavailable")
@@ -58,7 +60,7 @@ func (suite *ReadServiceSuite) TestGetByShortCodeNotFound() {
 		GetByShortCode(gomock.Any(), shortCode).
 		Return(nil, nil)
 
-	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := suite.service.GetOriginalURL(context.Background(), shortCode)
 	suite.NotNil(err)
 	suite.Nil(originalURL)
 	suite.ErrorContains(err, "short code not found")
@@ -78,7 +80,7 @@ func (suite *ReadServiceSuite) TestSuccess() {
 			nil,
 		)
 
-	originalURL, err := GetOriginalURL(context.Background(), suite.dao, shortCode)
+	originalURL, err := suite.service.GetOriginalURL(context.Background(), shortCode)
 	suite.Nil(err)
 	suite.NotNil(originalURL)
 	suite.Equal(expectedOriginalURL, *originalURL)

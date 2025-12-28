@@ -3,7 +3,6 @@ package create
 import (
 	"encoding/json"
 	"net/http"
-	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/middleware"
 )
 
@@ -19,13 +18,13 @@ type CreateURLResponse struct {
 	ShortURL string `json:"shortUrl"`
 }
 
-// Creates an HTTP handler for POST /urls that uses the provided DAO.
+// NewPostURLHandler creates an HTTP handler for POST /urls that uses the provided service.
 // - 201 Created with a CreateUrlResponse on success
 // - 400 Bad Request if the URL is invalid, exceeds length, or alias is invalid
 // - 409 Conflict if the alias is already in use
 // - 500 Internal Server Error for other errors
 // - 503 Service Unavailable if the data store is unavailable
-func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
+func NewPostURLHandler(service *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Attempt to read the JSON request body.
 		request, err := readRequestJson[CreateURLRequest](r)
@@ -38,13 +37,14 @@ func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 		middleware.LogWithRequestID(r.Context(), "Request: URL=%s", request.URL)
 
 		// Create the short URL.
-		shortURL, err := CreateShortURL(r.Context(), *dao, request.URL, request.Alias)
+		shortURL, err := service.CreateShortURL(r.Context(), request.URL, request.Alias)
 		if err != nil {
 			handleServiceError(r.Context(), w, err)
 			return
 		}
 
 		// Send the JSON response.
+		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		err = writeResponseJson(w, CreateURLResponse{
 			ShortURL: *shortURL,
@@ -70,6 +70,7 @@ func readRequestJson[T any](r *http.Request) (*T, error) {
 
 // Writes a JSON object of type T to the provided HTTP response.
 // Returns an error if encoding fails.
+// Note: Content-Type header should be set before calling this function.
 func writeResponseJson[T any](w http.ResponseWriter, body T) error {
 	// Send the JSON response - or an error.
 	err := json.NewEncoder(w).Encode(body)
@@ -78,9 +79,6 @@ func writeResponseJson[T any](w http.ResponseWriter, body T) error {
 		// In practice, this error is rare and would be caught by the handler
 		return err
 	}
-
-	// Set after the above in case JSON encoding fails.
-	w.Header().Set("Content-Type", "application/json")
 
 	return nil
 }

@@ -15,6 +15,7 @@ import (
 type HealthServiceSuite struct {
 	suite.Suite
 	ctrl         *gomock.Controller
+	service      *Service
 	dao          dao.DAO
 	urlRecordDAO *mock_dao.MockURLRecordDAO
 }
@@ -29,6 +30,7 @@ func (suite *HealthServiceSuite) SetupTest() {
 	suite.dao = dao.DAO{
 		URLRecordDAO: suite.urlRecordDAO,
 	}
+	suite.service = NewService(suite.dao)
 }
 
 func (suite *HealthServiceSuite) TestCheckHealthSuccess() {
@@ -38,7 +40,7 @@ func (suite *HealthServiceSuite) TestCheckHealthSuccess() {
 		GetByShortCode(gomock.Any(), "__health_check__").
 		Return(nil, nil)
 
-	isHealthy := CheckHealth(context.Background(), suite.dao)
+	isHealthy := suite.service.CheckHealth(context.Background())
 	suite.True(isHealthy)
 }
 
@@ -49,7 +51,7 @@ func (suite *HealthServiceSuite) TestCheckHealthWithRecordFound() {
 		GetByShortCode(gomock.Any(), "__health_check__").
 		Return(&model.URLRecordEntity{}, nil)
 
-	isHealthy := CheckHealth(context.Background(), suite.dao)
+	isHealthy := suite.service.CheckHealth(context.Background())
 	suite.True(isHealthy)
 }
 
@@ -60,6 +62,6 @@ func (suite *HealthServiceSuite) TestCheckHealthFailure() {
 		GetByShortCode(gomock.Any(), "__health_check__").
 		Return(nil, errors.New("database connection failed"))
 
-	isHealthy := CheckHealth(context.Background(), suite.dao)
+	isHealthy := suite.service.CheckHealth(context.Background())
 	suite.False(isHealthy)
 }

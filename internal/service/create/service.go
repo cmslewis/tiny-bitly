@@ -6,15 +6,29 @@ import (
 	"net/url"
 	"time"
 	"tiny-bitly/internal/apperrors"
+	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/middleware"
 	"tiny-bitly/internal/model"
 )
 
-// Creates and saves an alias for the provided long URL, then returns the alias.
-func CreateShortURL(
+// Service handles URL shortening operations.
+type Service struct {
+	dao    dao.DAO
+	config *config.Config
+}
+
+// NewService creates a new create service with the provided dependencies.
+func NewService(dao dao.DAO, config *config.Config) *Service {
+	return &Service{
+		dao:    dao,
+		config: config,
+	}
+}
+
+// CreateShortURL creates and saves an alias for the provided long URL, then returns the alias.
+func (s *Service) CreateShortURL(
 	ctx context.Context,
-	dao dao.DAO,
 	originalURL string,
 	alias *string,
 ) (*string, error) {
@@ -24,19 +38,14 @@ func CreateShortURL(
 		return nil, apperrors.ErrInvalidURL
 	}
 
-	// Read environment variables from context.
-	config, err := middleware.GetConfigFromContext(ctx)
-	if err != nil {
-		return nil, apperrors.ErrConfigurationMissing
-	}
-	hostname := config.APIHostname
+	hostname := s.config.APIHostname
 	if hostname == "" {
 		return nil, apperrors.ErrConfigurationMissing
 	}
-	maxTries := config.MaxTriesCreateShortCode
-	maxURLLength := config.MaxURLLength
-	shortCodeLength := config.ShortCodeLength
-	shortCodeTTL := config.ShortCodeTTL
+	maxTries := s.config.MaxTriesCreateShortCode
+	maxURLLength := s.config.MaxURLLength
+	shortCodeLength := s.config.ShortCodeLength
+	shortCodeTTL := s.config.ShortCodeTTL
 
 	if len(originalURL) > maxURLLength {
 		return nil, apperrors.ErrURLLengthExceeded
@@ -61,12 +70,12 @@ func CreateShortURL(
 		}
 
 		// Set expiration time based on configured TTL.
-		expiresAt := time.Now().Add(shortCodeTTL * time.Millisecond)
+		expiresAt := time.Now().Add(shortCodeTTL)
 
 		middleware.LogWithRequestID(ctx, "Creating a new URL record shortCode=%s expiresAt=%v", shortCode, expiresAt)
 
 		// Save a new URL record.
-		_, err = dao.URLRecordDAO.Create(ctx, model.URLRecord{
+		_, err = s.dao.URLRecordDAO.Create(ctx, model.URLRecord{
 			OriginalURL: *validatedURL,
 			ShortCode:   shortCode,
 			ExpiresAt:   expiresAt,
