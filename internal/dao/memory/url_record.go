@@ -13,14 +13,14 @@ import (
 type URLRecordMemoryDAO struct {
 	mu        sync.RWMutex
 	idCounter int64
-	entities  map[int64]*model.URLRecordEntity
+	entities  map[string]*model.URLRecordEntity // Map from short code to URL Record
 }
 
 // NewURLRecordMemoryDAO creates a new in-memory DAO instance.
 func NewURLRecordMemoryDAO() *URLRecordMemoryDAO {
 	return &URLRecordMemoryDAO{
 		idCounter: 1,
-		entities:  make(map[int64]*model.URLRecordEntity),
+		entities:  make(map[string]*model.URLRecordEntity),
 	}
 }
 
@@ -31,10 +31,10 @@ func (m *URLRecordMemoryDAO) Create(_ctx context.Context, urlRecord model.URLRec
 	defer m.mu.Unlock()
 
 	// Fail if this short code is already in use by an active record.
-	for _, otherEntity := range m.entities {
-		if otherEntity.URLRecord.ShortCode == urlRecord.ShortCode &&
-			!otherEntity.IsDeleted() &&
-			!otherEntity.IsExpired() {
+
+	if existingEntity, ok := m.entities[urlRecord.ShortCode]; ok {
+		if !existingEntity.IsDeleted() && !existingEntity.IsExpired() {
+			// Simulate a DB query that filters by deleted and expired status:
 			return nil, apperrors.ErrShortCodeAlreadyInUse
 		}
 	}
@@ -49,7 +49,7 @@ func (m *URLRecordMemoryDAO) Create(_ctx context.Context, urlRecord model.URLRec
 		URLRecord: urlRecord,
 	}
 
-	m.entities[m.idCounter] = entity
+	m.entities[entity.ShortCode] = entity
 	m.idCounter++
 
 	return entity, nil
@@ -61,12 +61,9 @@ func (m *URLRecordMemoryDAO) GetByShortCode(_ctx context.Context, shortCode stri
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
-	for _, entity := range m.entities {
-		if entity.IsDeleted() || entity.IsExpired() {
-			continue
-		}
-		if entity.ShortCode == shortCode {
-			return entity, nil
+	if existingEntity, ok := m.entities[shortCode]; ok {
+		if !existingEntity.IsDeleted() && !existingEntity.IsExpired() {
+			return existingEntity, nil
 		}
 	}
 
