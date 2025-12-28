@@ -32,10 +32,7 @@ func main() {
 	}
 
 	// Initialize dependencies.
-	appDAO := dao.GetDAOOfType(dao.DAOTypeMemory)
-	if appDAO == nil {
-		log.Fatal("Failed to initialize DAO")
-	}
+	appDAO := dao.NewMemoryDAO()
 
 	router := buildRouter(appDAO)
 
