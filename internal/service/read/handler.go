@@ -14,7 +14,6 @@ import (
 // - 503 Service Unavailable if the data store is unavailable
 func NewHandleGetURL(dao *dao.DAO) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
 
 		// Parse `shortCode` out of the URL.
 		shortCode := r.PathValue("shortCode")

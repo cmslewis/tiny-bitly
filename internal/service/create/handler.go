@@ -7,7 +7,7 @@ import (
 	"tiny-bitly/internal/middleware"
 )
 
-type CreateUrlRequest struct {
+type CreateURLRequest struct {
 	URL string `json:"url"`
 
 	// A specific user-provided alias to use in the short URL.
@@ -15,7 +15,7 @@ type CreateUrlRequest struct {
 	Alias *string `json:"alias"`
 }
 
-type CreateUrlResponse struct {
+type CreateURLResponse struct {
 	ShortURL string `json:"shortUrl"`
 }
 
@@ -27,10 +27,8 @@ type CreateUrlResponse struct {
 // - 503 Service Unavailable if the data store is unavailable
 func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		defer r.Body.Close()
-
 		// Attempt to read the JSON request body.
-		request, err := readRequestJson[CreateUrlRequest](r)
+		request, err := readRequestJson[CreateURLRequest](r)
 		if err != nil {
 			http.Error(w, "Malformatted request JSON", http.StatusBadRequest)
 			return
@@ -48,7 +46,7 @@ func NewHandlePostURL(dao *dao.DAO) http.HandlerFunc {
 
 		// Send the JSON response.
 		w.WriteHeader(http.StatusCreated)
-		err = writeResponseJson(w, CreateUrlResponse{
+		err = writeResponseJson(w, CreateURLResponse{
 			ShortURL: *shortURL,
 		})
 		if err != nil {
@@ -73,8 +71,6 @@ func readRequestJson[T any](r *http.Request) (*T, error) {
 // Writes a JSON object of type T to the provided HTTP response.
 // Returns an error if encoding fails.
 func writeResponseJson[T any](w http.ResponseWriter, body T) error {
-	w.Header().Set("Content-Type", "application/json")
-
 	// Send the JSON response - or an error.
 	err := json.NewEncoder(w).Encode(body)
 	if err != nil {
@@ -82,6 +78,9 @@ func writeResponseJson[T any](w http.ResponseWriter, body T) error {
 		// In practice, this error is rare and would be caught by the handler
 		return err
 	}
+
+	// Set after the above in case JSON encoding fails.
+	w.Header().Set("Content-Type", "application/json")
 
 	return nil
 }

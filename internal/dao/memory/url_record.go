@@ -25,6 +25,8 @@ func NewURLRecordMemoryDAO() *URLRecordMemoryDAO {
 }
 
 func (m *URLRecordMemoryDAO) Create(_ctx context.Context, urlRecord model.URLRecord) (*model.URLRecordEntity, error) {
+	// Context is not needed for in-memory store, since in-memory store is very fast.
+
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -54,6 +56,8 @@ func (m *URLRecordMemoryDAO) Create(_ctx context.Context, urlRecord model.URLRec
 }
 
 func (m *URLRecordMemoryDAO) GetByShortCode(_ctx context.Context, shortCode string) (*model.URLRecordEntity, error) {
+	// Context is not needed for in-memory store, since in-memory store is very fast.
+
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
