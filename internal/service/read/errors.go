@@ -16,7 +16,7 @@ func handleServiceError(ctx context.Context, w http.ResponseWriter, err error) {
 			UserMessage: "Service temporarily unavailable. Please try again later",
 		},
 		apperrors.ErrShortCodeNotFound: {
-			StatusCode:  http.StatusBadRequest,
+			StatusCode:  http.StatusNotFound,
 			UserMessage: "Short code does not exist",
 		},
 	})
