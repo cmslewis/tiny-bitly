@@ -26,47 +26,35 @@ func main() {
 	if err != nil {
 		logFatal("Failed to load .env file", "error", err)
 	}
-	config, err := config.LoadConfig()
+	cfg, err := config.LoadConfig()
 	if err != nil {
 		logFatal("Failed to load configuration", "error", err)
 	}
 
-	// Configure slog handler.
-	logHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-		Level: config.LogLevel,
-	})
-	slog.SetDefault(slog.New(logHandler))
-
-	// Initialize dependencies.
-	appDAO := dao.NewMemoryDAO()
+	initLogging(cfg)
 
 	// Initialize services.
-	createService := create.NewService(*appDAO, config)
-	readService := read.NewService(*appDAO, config)
+	appDAO := dao.NewMemoryDAO()
+	createService := create.NewService(*appDAO, cfg)
+	readService := read.NewService(*appDAO, cfg)
 	healthService := health.NewService(*appDAO)
 
 	router := buildRouter(createService, readService, healthService)
+	handler := middleware.RequestIDMiddleware(router) // Initialized first so others can use the Request ID
+	handler = middleware.RateLimitMiddleware(handler, cfg.RateLimitRequestsPerSecond, cfg.RateLimitBurst)
 
-	// Middleware: Generate a Request ID for each request (apply first so other
-	// handlers can use it).
-	handler := middleware.RequestIDMiddleware(router)
-
-	// Middleware: Rate limiting.
-	handler = middleware.RateLimitMiddleware(handler, config.RateLimitRequestsPerSecond, config.RateLimitBurst)
-
-	// Configure HTTP server with timeouts.
 	server := &http.Server{
-		Addr:         fmt.Sprintf(":%d", config.APIPort),
-		Handler:      http.TimeoutHandler(handler, config.RequestTimeout, "Request timeout"),
-		ReadTimeout:  config.ReadTimeout,
-		WriteTimeout: config.WriteTimeout,
-		IdleTimeout:  config.IdleTimeout,
+		Addr:         fmt.Sprintf(":%d", cfg.APIPort),
+		Handler:      http.TimeoutHandler(handler, cfg.RequestTimeout, "Request timeout"),
+		ReadTimeout:  cfg.ReadTimeout,
+		WriteTimeout: cfg.WriteTimeout,
+		IdleTimeout:  cfg.IdleTimeout,
 	}
 
 	// Start server in a goroutine so we can handle shutdown signals.
 	errChannel := make(chan error, 1)
 	go func() {
-		slog.Info("Server starting", "port", config.APIPort)
+		slog.Info("Server starting", "port", cfg.APIPort)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			errChannel <- err
 		}
@@ -80,7 +68,7 @@ func main() {
 	case err := <-errChannel:
 		handleServerError(err)
 	case sig := <-quitChannel:
-		handleQuitSignal(server, sig, config.ShutdownTimeout)
+		handleQuitSignal(server, sig, cfg.ShutdownTimeout)
 	}
 }
 
@@ -108,6 +96,14 @@ func handleQuitSignal(server *http.Server, sig os.Signal, shutdownTimeout time.D
 	}
 
 	slog.Info("Server shutdown complete")
+}
+
+func initLogging(cfg *config.Config) {
+	// Emit structured logs as JSON at the configured log level.
+	logHandler := slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
+		Level: cfg.LogLevel,
+	})
+	slog.SetDefault(slog.New(logHandler))
 }
 
 func buildRouter(createService *create.Service, readService *read.Service, healthService *health.Service) *http.ServeMux {
