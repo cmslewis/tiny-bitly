@@ -124,7 +124,7 @@ func buildRouter(createService *create.Service, readService *read.Service, healt
 	return mux
 }
 
-// logFatal logs an error using structured logging and exits the program with code 1.
+// Logs an error using structured logging and exits the program with code 1.
 func logFatal(msg string, args ...any) {
 	slog.Error(msg, args...)
 	os.Exit(1)
