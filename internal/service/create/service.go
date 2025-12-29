@@ -42,6 +42,7 @@ func (s *Service) CreateShortURL(
 	if hostname == "" {
 		return nil, apperrors.ErrConfigurationMissing
 	}
+	maxAliasLength := s.config.MaxAliasLength
 	maxTries := s.config.MaxTriesCreateShortCode
 	maxURLLength := s.config.MaxURLLength
 	shortCodeLength := s.config.ShortCodeLength
@@ -52,7 +53,7 @@ func (s *Service) CreateShortURL(
 	}
 
 	// If a custom alias was provided, validate it.
-	if alias != nil && !validateAlias(*alias) {
+	if alias != nil && !validateAlias(*alias, maxAliasLength) {
 		return nil, apperrors.ErrInvalidAlias
 	}
 

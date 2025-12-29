@@ -17,6 +17,9 @@ func GetTestConfig(cfg Config) Config {
 	if cfg.RateLimitBurst != 0 {
 		newCfg.RateLimitBurst = cfg.RateLimitBurst
 	}
+	if cfg.MaxAliasLength != 0 {
+		newCfg.MaxAliasLength = cfg.MaxAliasLength
+	}
 	if cfg.MaxTriesCreateShortCode != 0 {
 		newCfg.MaxTriesCreateShortCode = cfg.MaxTriesCreateShortCode
 	}

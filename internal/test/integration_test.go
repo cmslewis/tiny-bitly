@@ -38,7 +38,7 @@ func TestIntegration_HealthReadyCreateGetExpire(t *testing.T) {
 	// Initialize dependencies.
 	appDAO := dao.NewMemoryDAO()
 	createService := create.NewService(*appDAO, &testConfig)
-	readService := read.NewService(*appDAO)
+	readService := read.NewService(*appDAO, &testConfig)
 	healthService := health.NewService(*appDAO)
 
 	// Build router.

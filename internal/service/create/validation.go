@@ -3,16 +3,31 @@ package create
 import (
 	"errors"
 	"net/url"
+	"slices"
 	"strings"
 )
 
+var reservedPaths = []string{"health", "ready", "urls"}
+
 // Returns true if the provided URL alias is a valid base62 string, or false
 // otherwise.
-func validateAlias(alias string) bool {
+func validateAlias(alias string, maxLength int) bool {
+	// Forbid empty.
 	if alias == "" {
 		return false
 	}
 
+	// Forbid excessive length.
+	if len(alias) > maxLength {
+		return false
+	}
+
+	// Forbid reserved paths.
+	if slices.Contains(reservedPaths, alias) {
+		return false
+	}
+
+	// Forbid invalid chars.
 	for i := 0; i < len(alias); i += 1 {
 		char := alias[i]
 		isValidChar := validateChar(char)

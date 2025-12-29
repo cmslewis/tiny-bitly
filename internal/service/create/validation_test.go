@@ -14,9 +14,15 @@ func TestValidateAlias(t *testing.T) {
 		expected    bool
 	}
 
+	var maxAliasLength int = 20
+
 	testCases := []testCase{
 		{description: "InvalidEmpty", input: "", expected: false},
 		{description: "InvalidCharUnderscore", input: "ABCabc123_", expected: false},
+		{description: "InvalidLength21", input: "0123456789012345678901", expected: false},
+		{description: "InvalidPathHealth", input: "health", expected: false},
+		{description: "InvalidPathReady", input: "ready", expected: false},
+		{description: "InvalidPathUrls", input: "urls", expected: false},
 		{description: "ValidLength1", input: "A", expected: true},
 		{description: "ValidLength2", input: "Aa", expected: true},
 		{description: "ValidLength3", input: "Aa1", expected: true},
@@ -30,7 +36,7 @@ func TestValidateAlias(t *testing.T) {
 
 	for _, testCase := range testCases {
 		t.Run(testCase.description, func(tt *testing.T) {
-			require.Equal(tt, validateAlias(testCase.input), testCase.expected)
+			require.Equal(tt, validateAlias(testCase.input, maxAliasLength), testCase.expected)
 		})
 	}
 }

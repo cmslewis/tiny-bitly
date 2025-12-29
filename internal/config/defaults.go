@@ -8,6 +8,7 @@ import (
 var defaultAPIPort int = 8080
 var defaultAPIHostname string = fmt.Sprintf("http://localhost:%d", defaultAPIPort)
 var defaultLogLevel string = "info"
+var defaultMaxAliasLength int = 30
 var defaultMaxTriesCreateShortCode int = 10
 var defaultMaxUrlLength int = 1000
 var defaultRateLimitBurst int = 20
@@ -28,6 +29,7 @@ func GetDefaultConfig() Config {
 		LogLevel:                   getLogLevelTyped(defaultLogLevel),
 		RateLimitRequestsPerSecond: defaultRateLimitRequestsPerSecond,
 		RateLimitBurst:             defaultRateLimitBurst,
+		MaxAliasLength:             defaultMaxAliasLength,
 		MaxTriesCreateShortCode:    defaultMaxTriesCreateShortCode,
 		MaxURLLength:               defaultMaxUrlLength,
 		ShortCodeLength:            defaultShortCodeLength,

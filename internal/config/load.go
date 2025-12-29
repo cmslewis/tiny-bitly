@@ -13,6 +13,7 @@ type Config struct {
 	LogLevel    slog.Leveler
 
 	// Limits
+	MaxAliasLength          int
 	MaxTriesCreateShortCode int
 	MaxURLLength            int
 	ShortCodeLength         int
@@ -44,6 +45,7 @@ func LoadConfig() (*Config, error) {
 	rateLimitRPS := getIntEnvOrDefault("RATE_LIMIT_REQUESTS_PER_SECOND", defaultRateLimitRequestsPerSecond)
 	rateLimitBurst := getIntEnvOrDefault("RATE_LIMIT_BURST", defaultRateLimitBurst)
 
+	maxAliasLength := getIntEnvOrDefault("MAX_ALIAS_LENGTH", defaultMaxAliasLength)
 	maxTries := getIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", defaultMaxTriesCreateShortCode)
 	maxURLLength := getIntEnvOrDefault("MAX_URL_LENGTH", defaultMaxUrlLength)
 	shortCodeLength := getIntEnvOrDefault("SHORT_CODE_LENGTH", defaultShortCodeLength)
@@ -63,6 +65,7 @@ func LoadConfig() (*Config, error) {
 		RateLimitRequestsPerSecond: rateLimitRPS,
 		RateLimitBurst:             rateLimitBurst,
 
+		MaxAliasLength:          maxAliasLength,
 		MaxTriesCreateShortCode: maxTries,
 		MaxURLLength:            maxURLLength,
 		ShortCodeLength:         shortCodeLength,

@@ -42,7 +42,7 @@ func main() {
 
 	// Initialize services.
 	createService := create.NewService(*appDAO, config)
-	readService := read.NewService(*appDAO)
+	readService := read.NewService(*appDAO, config)
 	healthService := health.NewService(*appDAO)
 
 	router := buildRouter(createService, readService, healthService)

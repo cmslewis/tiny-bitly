@@ -79,7 +79,7 @@ func (suite *CreateServiceSuite) TestErrorInputAliasInvalidChars() {
 
 func (suite *CreateServiceSuite) TestErrorInputAliasAlreadyUsedForDifferentURL() {
 	// Mock: Create() should return a specific error code.
-	suite.urlRecordDAO.EXPECT().Create(gomock.Any(), gomock.Any()).Return(nil, apperrors.ErrShortCodeAlreadyInUse)
+	suite.MockCreateFail()
 
 	originalURL := "https://www.foo.com"
 	alias := "bar"
