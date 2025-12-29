@@ -17,9 +17,9 @@ func NewService(dao dao.DAO) *Service {
 	}
 }
 
-// CheckHealth verifies that the service is healthy by checking DAO connectivity.
+// CheckReady verifies that the service is healthy by checking DAO connectivity.
 // Returns true if the service is healthy, false otherwise.
-func (s *Service) CheckHealth(ctx context.Context) bool {
+func (s *Service) CheckReady(ctx context.Context) bool {
 	// Perform a simple read operation to verify DAO is accessible.
 	// Using a non-existent short code to avoid side effects.
 	// GetByShortCode returns (nil, nil) for not found, or (entity, nil) for found,

@@ -18,6 +18,7 @@ import (
 	"tiny-bitly/internal/service/read"
 
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -40,8 +41,9 @@ func main() {
 	healthService := health.NewService(*appDAO)
 
 	router := buildRouter(createService, readService, healthService)
-	handler := middleware.RequestIDMiddleware(router) // Initialized first so others can use the Request ID
+	handler := middleware.RequestIDMiddleware(router)
 	handler = middleware.RateLimitMiddleware(handler, cfg.RateLimitRequestsPerSecond, cfg.RateLimitBurst)
+	handler = middleware.MetricsMiddleware(handler)
 
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.APIPort),
@@ -112,6 +114,9 @@ func buildRouter(createService *create.Service, readService *read.Service, healt
 	// Health check endpoints
 	mux.HandleFunc("GET /health", health.NewGetHealthHandler(healthService))
 	mux.HandleFunc("GET /ready", health.NewGetReadyHandler(healthService))
+
+	// Metrics endpoints
+	mux.Handle("GET /metrics", promhttp.Handler())
 
 	// Application endpoints
 	mux.HandleFunc("POST /urls", create.NewPostURLHandler(createService))

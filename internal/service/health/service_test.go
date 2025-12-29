@@ -33,35 +33,35 @@ func (suite *HealthServiceSuite) SetupTest() {
 	suite.service = NewService(suite.dao)
 }
 
-func (suite *HealthServiceSuite) TestCheckHealthSuccess() {
+func (suite *HealthServiceSuite) TestCheckReadySuccess() {
 	// Mock: DAO responds successfully and record does not exist.
 	suite.urlRecordDAO.
 		EXPECT().
 		GetByShortCode(gomock.Any(), "__health_check__").
 		Return(nil, nil)
 
-	isHealthy := suite.service.CheckHealth(context.Background())
+	isHealthy := suite.service.CheckReady(context.Background())
 	suite.True(isHealthy)
 }
 
-func (suite *HealthServiceSuite) TestCheckHealthWithRecordFound() {
+func (suite *HealthServiceSuite) TestCheckReadyWithRecordFound() {
 	// Mock: DAO responds successfully and record exists.
 	suite.urlRecordDAO.
 		EXPECT().
 		GetByShortCode(gomock.Any(), "__health_check__").
 		Return(&model.URLRecordEntity{}, nil)
 
-	isHealthy := suite.service.CheckHealth(context.Background())
+	isHealthy := suite.service.CheckReady(context.Background())
 	suite.True(isHealthy)
 }
 
-func (suite *HealthServiceSuite) TestCheckHealthFailure() {
+func (suite *HealthServiceSuite) TestCheckReadyFailure() {
 	// Mock: DAO fails to respond.
 	suite.urlRecordDAO.
 		EXPECT().
 		GetByShortCode(gomock.Any(), "__health_check__").
 		Return(nil, errors.New("database connection failed"))
 
-	isHealthy := suite.service.CheckHealth(context.Background())
+	isHealthy := suite.service.CheckReady(context.Background())
 	suite.False(isHealthy)
 }

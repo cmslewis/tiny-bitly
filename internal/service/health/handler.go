@@ -27,7 +27,7 @@ func NewGetHealthHandler(service *Service) http.HandlerFunc {
 // - 503 Service Unavailable if the service is not ready
 func NewGetReadyHandler(service *Service) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		isHealthy := service.CheckHealth(r.Context())
+		isHealthy := service.CheckReady(r.Context())
 
 		w.Header().Set("Content-Type", "application/json")
 

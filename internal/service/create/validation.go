@@ -5,9 +5,8 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"tiny-bitly/internal/constants"
 )
-
-var reservedPaths = []string{"health", "ready", "urls"}
 
 // Returns true if the provided URL alias is a valid base62 string, or false
 // otherwise.
@@ -23,7 +22,7 @@ func validateAlias(alias string, maxLength int) bool {
 	}
 
 	// Forbid reserved paths.
-	if slices.Contains(reservedPaths, alias) {
+	if slices.Contains(constants.ReservedPaths, alias) {
 		return false
 	}
 
