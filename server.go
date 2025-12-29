@@ -51,6 +51,9 @@ func main() {
 	// handlers can use it).
 	handler := middleware.RequestIDMiddleware(router)
 
+	// Middleware: Rate limiting.
+	handler = middleware.RateLimitMiddleware(handler, config.RateLimitRequestsPerSecond, config.RateLimitBurst)
+
 	// Configure HTTP server with timeouts.
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", config.APIPort),

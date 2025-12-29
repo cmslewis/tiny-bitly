@@ -10,6 +10,8 @@ var defaultAPIHostname string = fmt.Sprintf("http://localhost:%d", defaultAPIPor
 var defaultLogLevel string = "info"
 var defaultMaxTriesCreateShortCode int = 10
 var defaultMaxUrlLength int = 1000
+var defaultRateLimitBurst int = 20
+var defaultRateLimitRequestsPerSecond int = 10
 var defaultShortCodeLength int = 6
 var defaultShortCodeTtlMillis int = 30000
 var defaultTimeoutIdleMillis int = 60000
@@ -21,17 +23,19 @@ var defaultTimeoutWriteMillis int = 30000
 // Returns a config object with sensible defaults in place for each key.
 func GetDefaultConfig() Config {
 	return Config{
-		APIPort:                 defaultAPIPort,
-		APIHostname:             defaultAPIHostname,
-		LogLevel:                getLogLevelTyped(defaultLogLevel),
-		MaxTriesCreateShortCode: defaultMaxTriesCreateShortCode,
-		MaxURLLength:            defaultMaxUrlLength,
-		ShortCodeLength:         defaultShortCodeLength,
-		ShortCodeTTL:            time.Duration(defaultShortCodeTtlMillis) * time.Millisecond,
-		IdleTimeout:             time.Duration(defaultTimeoutIdleMillis) * time.Millisecond,
-		ReadTimeout:             time.Duration(defaultTimeoutReadMillis) * time.Millisecond,
-		RequestTimeout:          time.Duration(defaultTimeoutRequestMillis) * time.Millisecond,
-		ShutdownTimeout:         time.Duration(defaultTimeoutShutdownMillis) * time.Millisecond,
-		WriteTimeout:            time.Duration(defaultTimeoutWriteMillis) * time.Millisecond,
+		APIPort:                    defaultAPIPort,
+		APIHostname:                defaultAPIHostname,
+		LogLevel:                   getLogLevelTyped(defaultLogLevel),
+		RateLimitRequestsPerSecond: defaultRateLimitRequestsPerSecond,
+		RateLimitBurst:             defaultRateLimitBurst,
+		MaxTriesCreateShortCode:    defaultMaxTriesCreateShortCode,
+		MaxURLLength:               defaultMaxUrlLength,
+		ShortCodeLength:            defaultShortCodeLength,
+		ShortCodeTTL:               time.Duration(defaultShortCodeTtlMillis) * time.Millisecond,
+		IdleTimeout:                time.Duration(defaultTimeoutIdleMillis) * time.Millisecond,
+		ReadTimeout:                time.Duration(defaultTimeoutReadMillis) * time.Millisecond,
+		RequestTimeout:             time.Duration(defaultTimeoutRequestMillis) * time.Millisecond,
+		ShutdownTimeout:            time.Duration(defaultTimeoutShutdownMillis) * time.Millisecond,
+		WriteTimeout:               time.Duration(defaultTimeoutWriteMillis) * time.Millisecond,
 	}
 }

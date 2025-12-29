@@ -11,6 +11,12 @@ func GetTestConfig(cfg Config) Config {
 	if cfg.APIHostname != "" {
 		newCfg.APIHostname = cfg.APIHostname
 	}
+	if cfg.RateLimitRequestsPerSecond != 0 {
+		newCfg.RateLimitRequestsPerSecond = cfg.RateLimitRequestsPerSecond
+	}
+	if cfg.RateLimitBurst != 0 {
+		newCfg.RateLimitBurst = cfg.RateLimitBurst
+	}
 	if cfg.MaxTriesCreateShortCode != 0 {
 		newCfg.MaxTriesCreateShortCode = cfg.MaxTriesCreateShortCode
 	}

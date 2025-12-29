@@ -17,6 +17,10 @@ type Config struct {
 	MaxURLLength            int
 	ShortCodeLength         int
 
+	// Rate Limiting
+	RateLimitRequestsPerSecond int
+	RateLimitBurst             int
+
 	// Timeouts
 	IdleTimeout     time.Duration
 	ReadTimeout     time.Duration
@@ -37,6 +41,9 @@ func LoadConfig() (*Config, error) {
 	port := getIntEnvOrDefault("API_PORT", defaultAPIPort)
 	logLevel := getStringEnvOrDefault("LOG_LEVEL", defaultLogLevel)
 
+	rateLimitRPS := getIntEnvOrDefault("RATE_LIMIT_REQUESTS_PER_SECOND", defaultRateLimitRequestsPerSecond)
+	rateLimitBurst := getIntEnvOrDefault("RATE_LIMIT_BURST", defaultRateLimitBurst)
+
 	maxTries := getIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", defaultMaxTriesCreateShortCode)
 	maxURLLength := getIntEnvOrDefault("MAX_URL_LENGTH", defaultMaxUrlLength)
 	shortCodeLength := getIntEnvOrDefault("SHORT_CODE_LENGTH", defaultShortCodeLength)
@@ -52,6 +59,9 @@ func LoadConfig() (*Config, error) {
 		APIPort:     port,
 		APIHostname: hostname,
 		LogLevel:    getLogLevelTyped(logLevel),
+
+		RateLimitRequestsPerSecond: rateLimitRPS,
+		RateLimitBurst:             rateLimitBurst,
 
 		MaxTriesCreateShortCode: maxTries,
 		MaxURLLength:            maxURLLength,
