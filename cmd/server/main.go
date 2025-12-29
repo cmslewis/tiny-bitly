@@ -18,6 +18,8 @@ import (
 	"tiny-bitly/internal/service/read"
 
 	"github.com/joho/godotenv"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/collectors"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
@@ -33,6 +35,7 @@ func main() {
 	}
 
 	initLogging(cfg)
+	initRuntimeMetrics()
 
 	// Initialize services.
 	appDAO := dao.NewMemoryDAO()
@@ -106,6 +109,15 @@ func initLogging(cfg *config.Config) {
 		Level: cfg.LogLevel,
 	})
 	slog.SetDefault(slog.New(logHandler))
+}
+
+// initRuntimeMetrics registers Go runtime and process metrics.
+func initRuntimeMetrics() {
+	// Register Go runtime metrics (memory, goroutines, GC stats, etc.)
+	prometheus.MustRegister(collectors.NewGoCollector())
+
+	// Register process metrics (CPU, memory, file descriptors, etc.)
+	prometheus.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 }
 
 func buildRouter(createService *create.Service, readService *read.Service, healthService *health.Service) *http.ServeMux {

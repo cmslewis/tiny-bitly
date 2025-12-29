@@ -35,9 +35,10 @@ var httpMetrics = &HTTPMetrics{
 	),
 	RequestDuration: promauto.NewHistogramVec(
 		prometheus.HistogramOpts{
-			Name:    "http_request_duration_seconds",
-			Help:    "Duration of HTTP requests in seconds, labeled by method, endpoint, and status code",
-			Buckets: prometheus.DefBuckets, // Default buckets: [.005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5, 10]
+			Name: "http_request_duration_seconds",
+			Help: "Duration of HTTP requests in seconds, labeled by method, endpoint, and status code",
+			// Custom buckets optimized for API latency (milliseconds: 1, 5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000)
+			Buckets: []float64{.001, .005, .01, .025, .05, .1, .25, .5, 1, 2.5, 5},
 		},
 		[]string{"method", "endpoint", "status_code"},
 	),

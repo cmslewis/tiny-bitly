@@ -24,7 +24,7 @@ import (
 // Many Requests.
 func TestRateLimiting(t *testing.T) {
 	testConfig := config.GetTestConfig(config.Config{
-		APIHostname: "http://localhost:8080",
+		APIHostname: "http://localhost:8081", // Different from the default API Hostname of the real (potentially running) server.
 	})
 
 	// Initialize dependencies.
