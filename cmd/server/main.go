@@ -24,10 +24,13 @@ import (
 )
 
 func main() {
-	// Load environment variables.
-	err := godotenv.Load()
-	if err != nil {
-		logFatal("Failed to load .env file", "error", err)
+	// Load environment variables from .env file in development only. In
+	// production, environment variables should be set by the runtime (Docker,
+	// K8s, etc.).
+	if os.Getenv("ENV") != "production" {
+		if err := godotenv.Load(); err != nil {
+			slog.Warn("No .env file found, using environment variables", "error", err)
+		}
 	}
 	cfg, err := config.LoadConfig()
 	if err != nil {
