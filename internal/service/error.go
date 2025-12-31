@@ -9,7 +9,8 @@ import (
 )
 
 type ErrorResponse struct {
-	Error string `json:"error"`
+	Error     string `json:"error"`
+	RequestID string `json:"requestId"`
 }
 
 type ErrorMapping struct {
@@ -22,13 +23,14 @@ type ErrorMapping struct {
 func HandleServiceError(ctx context.Context, w http.ResponseWriter, err error, mappings map[error]ErrorMapping) {
 	// Log the detailed error for debugging with request ID.
 	middleware.LogErrorWithRequestID(ctx, err, "Service error")
+	requestID := middleware.GetRequestID(ctx)
 
 	w.Header().Set("Content-Type", "application/json")
 
 	found := false
 	for entryError, entry := range mappings {
 		if errors.Is(err, entryError) {
-			writeResponse(w, entry.StatusCode, entry.UserMessage)
+			writeResponse(w, entry.StatusCode, entry.UserMessage, requestID)
 			found = true
 		}
 	}
@@ -36,13 +38,15 @@ func HandleServiceError(ctx context.Context, w http.ResponseWriter, err error, m
 		writeResponse(w,
 			http.StatusInternalServerError,
 			"An unexpected error occurred",
+			requestID,
 		)
 	}
 }
 
-func writeResponse(w http.ResponseWriter, statusCode int, errorMessage string) {
+func writeResponse(w http.ResponseWriter, statusCode int, errorMessage string, requestID string) {
 	w.WriteHeader(statusCode)
 	json.NewEncoder(w).Encode(ErrorResponse{
-		Error: errorMessage,
+		Error:     errorMessage,
+		RequestID: requestID,
 	})
 }
