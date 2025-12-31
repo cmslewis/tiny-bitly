@@ -2,7 +2,7 @@ services:
   prometheus:
     image: prom/prometheus:latest
     volumes:
-      - ./prometheus-config/:/etc/prometheus/
+      - ./config/prometheus/:/etc/prometheus/
       - prometheus-data:/prometheus
     command:
       - '--config.file=/etc/prometheus/prometheus.yml'
@@ -29,7 +29,9 @@ services:
       - GF_INSTALL_PLUGINS=
     volumes:
       - grafana-storage:/var/lib/grafana
-      - ./grafana-config/provisioning:/etc/grafana/provisioning
+
+      # Provision "hardcoded" dashboards declared in JSON files:
+      - ./config/grafana/provisioning:/etc/grafana/provisioning
     restart: unless-stopped
     depends_on:
       prometheus:
