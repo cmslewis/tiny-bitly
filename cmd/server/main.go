@@ -53,6 +53,7 @@ func main() {
 	handler := middleware.RequestIDMiddleware(router)
 	handler = middleware.RateLimitMiddleware(handler, cfg.RateLimitRequestsPerSecond, cfg.RateLimitBurst)
 	handler = middleware.MetricsMiddleware(handler)
+	handler = middleware.SecurityMiddleware(handler)
 
 	// Set request body size limits to prevent DoS attacks via large payloads.
 	// Returns '413 Request Entity Too Large' if exceeded.
