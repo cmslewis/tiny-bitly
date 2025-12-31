@@ -51,6 +51,10 @@ func main() {
 	handler = middleware.RateLimitMiddleware(handler, cfg.RateLimitRequestsPerSecond, cfg.RateLimitBurst)
 	handler = middleware.MetricsMiddleware(handler)
 
+	// Set request body size limits to prevent DoS attacks via large payloads.
+	// Returns '413 Request Entity Too Large' if exceeded.
+	handler = http.MaxBytesHandler(handler, int64(cfg.MaxRequestSizeBytes))
+
 	server := &http.Server{
 		Addr:         fmt.Sprintf(":%d", cfg.APIPort),
 		Handler:      http.TimeoutHandler(handler, cfg.RequestTimeout, "Request timeout"),

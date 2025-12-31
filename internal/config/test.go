@@ -20,6 +20,9 @@ func GetTestConfig(cfg Config) Config {
 	if cfg.MaxAliasLength != 0 {
 		newCfg.MaxAliasLength = cfg.MaxAliasLength
 	}
+	if cfg.MaxRequestSizeBytes != 0 {
+		newCfg.MaxRequestSizeBytes = cfg.MaxRequestSizeBytes
+	}
 	if cfg.MaxTriesCreateShortCode != 0 {
 		newCfg.MaxTriesCreateShortCode = cfg.MaxTriesCreateShortCode
 	}

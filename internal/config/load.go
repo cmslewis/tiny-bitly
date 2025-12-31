@@ -14,6 +14,7 @@ type Config struct {
 
 	// Limits
 	MaxAliasLength          int
+	MaxRequestSizeBytes     int
 	MaxTriesCreateShortCode int
 	MaxURLLength            int
 	ShortCodeLength         int
@@ -46,6 +47,7 @@ func LoadConfig() (*Config, error) {
 	rateLimitBurst := getIntEnvOrDefault("RATE_LIMIT_BURST", defaultRateLimitBurst)
 
 	maxAliasLength := getIntEnvOrDefault("MAX_ALIAS_LENGTH", defaultMaxAliasLength)
+	maxRequestSizeBytes := getIntEnvOrDefault("MAX_REQUEST_SIZE_BYTES", defaultMaxRequestSizeBytes)
 	maxTries := getIntEnvOrDefault("MAX_TRIES_CREATE_SHORT_CODE", defaultMaxTriesCreateShortCode)
 	maxURLLength := getIntEnvOrDefault("MAX_URL_LENGTH", defaultMaxUrlLength)
 	shortCodeLength := getIntEnvOrDefault("SHORT_CODE_LENGTH", defaultShortCodeLength)
@@ -66,6 +68,7 @@ func LoadConfig() (*Config, error) {
 		RateLimitBurst:             rateLimitBurst,
 
 		MaxAliasLength:          maxAliasLength,
+		MaxRequestSizeBytes:     maxRequestSizeBytes,
 		MaxTriesCreateShortCode: maxTries,
 		MaxURLLength:            maxURLLength,
 		ShortCodeLength:         shortCodeLength,

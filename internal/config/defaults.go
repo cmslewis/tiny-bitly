@@ -9,6 +9,7 @@ var defaultAPIPort int = 8080
 var defaultAPIHostname string = fmt.Sprintf("http://localhost:%d", defaultAPIPort)
 var defaultLogLevel string = "info"
 var defaultMaxAliasLength int = 30
+var defaultMaxRequestSizeBytes int = 1048576 // 1 MB, reasonable for a URL shortening service
 var defaultMaxTriesCreateShortCode int = 10
 var defaultMaxUrlLength int = 1000
 var defaultRateLimitBurst int = 20
@@ -30,6 +31,7 @@ func GetDefaultConfig() Config {
 		RateLimitRequestsPerSecond: defaultRateLimitRequestsPerSecond,
 		RateLimitBurst:             defaultRateLimitBurst,
 		MaxAliasLength:             defaultMaxAliasLength,
+		MaxRequestSizeBytes:        defaultMaxRequestSizeBytes,
 		MaxTriesCreateShortCode:    defaultMaxTriesCreateShortCode,
 		MaxURLLength:               defaultMaxUrlLength,
 		ShortCodeLength:            defaultShortCodeLength,
