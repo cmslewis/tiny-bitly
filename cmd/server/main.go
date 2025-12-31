@@ -16,6 +16,8 @@ import (
 	"tiny-bitly/internal/service/create"
 	"tiny-bitly/internal/service/health"
 	"tiny-bitly/internal/service/read"
+	versionService "tiny-bitly/internal/service/version"
+	"tiny-bitly/internal/version"
 
 	"github.com/joho/godotenv"
 	"github.com/prometheus/client_golang/prometheus"
@@ -39,6 +41,7 @@ func main() {
 
 	initLogging(cfg)
 	initRuntimeMetrics()
+	logVersionInfo()
 
 	// Initialize services.
 	appDAO := dao.NewMemoryDAO()
@@ -127,12 +130,22 @@ func initRuntimeMetrics() {
 	prometheus.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
 }
 
+// logVersionInfo logs the application version information at startup.
+func logVersionInfo() {
+	slog.Info("Application version",
+		"version", version.Version,
+		"commit", version.Commit,
+		"buildTime", version.BuildTime,
+	)
+}
+
 func buildRouter(createService *create.Service, readService *read.Service, healthService *health.Service) *http.ServeMux {
 	mux := http.NewServeMux()
 
 	// Health check endpoints
 	mux.HandleFunc("GET /health", health.NewGetHealthHandler(healthService))
 	mux.HandleFunc("GET /ready", health.NewGetReadyHandler(healthService))
+	mux.HandleFunc("GET /version", versionService.NewGetVersionHandler())
 
 	// Metrics endpoints
 	mux.Handle("GET /metrics", promhttp.Handler())
