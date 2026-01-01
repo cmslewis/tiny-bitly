@@ -15,6 +15,11 @@ type URLRecordEntity struct {
 	URLRecord
 }
 
+// TableName specifies the table name for GORM.
+func (URLRecordEntity) TableName() string {
+	return "url_records"
+}
+
 func (u URLRecordEntity) IsExpired() bool {
 	return u.ExpiresAt.Before(time.Now())
 }

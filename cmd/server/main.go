@@ -44,7 +44,10 @@ func main() {
 	logVersionInfo()
 
 	// Initialize services.
-	appDAO := dao.NewMemoryDAO()
+	appDAO, err := dao.NewDatabaseDAO(cfg.PostgresPort, cfg.PostgresDB, cfg.PostgresUser, cfg.PostgresPassword)
+	if err != nil {
+		logFatal("Failed to initialize database DAO", "error", err)
+	}
 	createService := create.NewService(*appDAO, cfg)
 	readService := read.NewService(*appDAO, cfg)
 	healthService := health.NewService(*appDAO)

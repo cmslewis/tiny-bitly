@@ -9,6 +9,7 @@ import (
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/db"
 
+	"github.com/golang-migrate/migrate/v4/database/postgres"
 	"github.com/joho/godotenv"
 )
 
@@ -84,7 +85,7 @@ func main() {
 	)
 
 	// Open connection.
-	driver, err := db.OpenConnection(
+	dbConnection, err := db.OpenConnectionRaw(
 		cfg.PostgresPort,
 		cfg.PostgresDB,
 		cfg.PostgresUser,
@@ -92,6 +93,11 @@ func main() {
 	)
 	if err != nil {
 		slog.Error("Failed to open database connection", "error", err)
+		os.Exit(1)
+	}
+	driver, err := postgres.WithInstance(dbConnection, &postgres.Config{})
+	if err != nil {
+		slog.Error("Failed to init database driver", "error", err)
 		os.Exit(1)
 	}
 	defer driver.Close()

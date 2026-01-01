@@ -2,6 +2,7 @@ package dao
 
 import (
 	"context"
+	"tiny-bitly/internal/dao/database"
 	"tiny-bitly/internal/dao/memory"
 	"tiny-bitly/internal/model"
 )
@@ -27,10 +28,12 @@ func NewMemoryDAO() *DAO {
 
 // NewDatabaseDAO creates a new DAO instance using the database implementation.
 // TODO: Implement the database DAO.
-func NewDatabaseDAO() (*DAO, error) {
-	// TODO: Implement the database DAO.
-	// return &DAO{
-	//     URLRecordDAO: database.NewURLRecordDatabaseDAO(...),
-	// }, nil
-	return nil, nil
+func NewDatabaseDAO(dbPort int, dbName string, dbUser string, dbPassword string) (*DAO, error) {
+	urlRecordDAO, err := database.NewURLRecordDatabaseDAO(dbPort, dbName, dbUser, dbPassword)
+	if err != nil {
+		return nil, err
+	}
+	return &DAO{
+		URLRecordDAO: urlRecordDAO,
+	}, nil
 }

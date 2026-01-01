@@ -9,10 +9,10 @@ import (
 	"tiny-bitly/internal/model"
 )
 
-// URLRecordMemoryDAO is an in-memory implementation of ShortenedURLDAO.
+// URLRecordMemoryDAO is an in-memory implementation of URLRecordDAO.
 type URLRecordMemoryDAO struct {
 	mu        sync.RWMutex
-	idCounter int64
+	idCounter uint
 	entities  map[string]*model.URLRecordEntity // Map from short code to URL Record
 }
 
@@ -33,7 +33,7 @@ func (m *URLRecordMemoryDAO) Create(_ctx context.Context, urlRecord model.URLRec
 	// Fail if this short code is already in use by an active record.
 
 	if existingEntity, ok := m.entities[urlRecord.ShortCode]; ok {
-		if !existingEntity.IsDeleted() && !existingEntity.IsExpired() {
+		if !existingEntity.IsExpired() {
 			// Simulate a DB query that filters by deleted and expired status:
 			return nil, apperrors.ErrShortCodeAlreadyInUse
 		}
@@ -44,7 +44,6 @@ func (m *URLRecordMemoryDAO) Create(_ctx context.Context, urlRecord model.URLRec
 		Entity: model.Entity{
 			ID:        m.idCounter,
 			CreatedAt: now,
-			UpdatedAt: now,
 		},
 		URLRecord: urlRecord,
 	}
@@ -62,7 +61,7 @@ func (m *URLRecordMemoryDAO) GetByShortCode(_ctx context.Context, shortCode stri
 	defer m.mu.RUnlock()
 
 	if existingEntity, ok := m.entities[shortCode]; ok {
-		if !existingEntity.IsDeleted() && !existingEntity.IsExpired() {
+		if !existingEntity.IsExpired() {
 			return existingEntity, nil
 		}
 	}

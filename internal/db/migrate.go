@@ -6,8 +6,6 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq" // PostgreSQL driver
 )
 
 // RunMigrations runs all database "up" migrations in sequential order.
