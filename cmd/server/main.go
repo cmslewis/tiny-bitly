@@ -125,10 +125,20 @@ func initLogging(cfg *config.Config) {
 // initRuntimeMetrics registers Go runtime and process metrics.
 func initRuntimeMetrics() {
 	// Register Go runtime metrics (memory, goroutines, GC stats, etc.)
-	prometheus.MustRegister(collectors.NewGoCollector())
+	if err := prometheus.Register(collectors.NewGoCollector()); err != nil {
+		// Collector may already be registered. If so, log and continue.
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			slog.Warn("Failed to register Go collector", "error", err)
+		}
+	}
 
 	// Register process metrics (CPU, memory, file descriptors, etc.)
-	prometheus.MustRegister(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{}))
+	if err := prometheus.Register(collectors.NewProcessCollector(collectors.ProcessCollectorOpts{})); err != nil {
+		// Collector may already be registered. If so, log and continue.
+		if _, ok := err.(prometheus.AlreadyRegisteredError); !ok {
+			slog.Warn("Failed to register process collector", "error", err)
+		}
+	}
 }
 
 // logVersionInfo logs the application version information at startup.
