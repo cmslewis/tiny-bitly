@@ -23,18 +23,10 @@ tasks:
       - 'go build -ldflags "-X tiny-bitly/internal/version.Version={{.VERSION}} -X tiny-bitly/internal/version.Commit={{.COMMIT}} -X tiny-bitly/internal/version.BuildTime={{.BUILD_TIME}}" -o bin/{{.BINARY_NAME}} {{.CMD_PATH}}'
       - echo "Binary built at bin/{{.BINARY_NAME}}"
 
-  build-dev:
-    desc: Build the development binary (no version injection)
+  start:
+    desc: Run the server
     cmds:
-      - echo "Building {{.BINARY_NAME}} for development..."
-      - go build -o bin/{{.BINARY_NAME}} {{.CMD_PATH}}
-      - echo "Binary built at bin/{{.BINARY_NAME}}"
-
-  run:
-    desc: Build and run the server
-    deps: [build-dev]
-    cmds:
-      - ./bin/{{.BINARY_NAME}}
+      - go run {{.CMD_PATH}}/main.go
 
   test:
     desc: Run all tests
