@@ -82,4 +82,4 @@ tasks:
   load-test-data:
     desc: Load lots of test URL records into the database
     cmds:
-      - go run ./cmd/test_data/main.go
+      - go run ./cmd/load_test_data/main.go
