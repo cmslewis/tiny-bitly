@@ -1,4 +1,22 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - 5434:5432
+    environment:
+      POSTGRES_DB: $POSTGRES_DB
+      POSTGRES_USER: $POSTGRES_USER
+      POSTGRES_PASSWORD: $POSTGRES_PASSWORD
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $POSTGRES_USER -d $POSTGRES_DB"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   prometheus:
     image: prom/prometheus:latest
     volumes:
@@ -44,4 +62,5 @@ services:
 
 volumes:
   grafana-storage:
+  postgres-data:
   prometheus-data:

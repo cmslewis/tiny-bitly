@@ -12,6 +12,11 @@ var defaultMaxAliasLength int = 30
 var defaultMaxRequestSizeBytes int = 1048576 // 1 MB, reasonable for a URL shortening service
 var defaultMaxTriesCreateShortCode int = 10
 var defaultMaxUrlLength int = 1000
+var defaultPostgresPort int = 5434
+var defaultPostgresDB string = ""
+var defaultPostgresUser string = ""
+var defaultPostgresPassword string = ""
+
 var defaultRateLimitBurst int = 20
 var defaultRateLimitRequestsPerSecond int = 10
 var defaultShortCodeLength int = 6
@@ -34,6 +39,10 @@ func GetDefaultConfig() Config {
 		MaxRequestSizeBytes:        defaultMaxRequestSizeBytes,
 		MaxTriesCreateShortCode:    defaultMaxTriesCreateShortCode,
 		MaxURLLength:               defaultMaxUrlLength,
+		PostgresPort:               defaultPostgresPort,
+		PostgresDB:                 defaultPostgresDB,
+		PostgresUser:               defaultPostgresUser,
+		PostgresPassword:           defaultPostgresPassword,
 		ShortCodeLength:            defaultShortCodeLength,
 		ShortCodeTTL:               time.Duration(defaultShortCodeTtlMillis) * time.Millisecond,
 		IdleTimeout:                time.Duration(defaultTimeoutIdleMillis) * time.Millisecond,

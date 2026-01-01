@@ -29,6 +29,18 @@ func GetTestConfig(cfg Config) Config {
 	if cfg.MaxURLLength != 0 {
 		newCfg.MaxURLLength = cfg.MaxURLLength
 	}
+	if cfg.PostgresPort != 0 {
+		newCfg.PostgresPort = cfg.PostgresPort
+	}
+	if cfg.PostgresDB != "" {
+		newCfg.PostgresDB = cfg.PostgresDB
+	}
+	if cfg.PostgresUser != "" {
+		newCfg.PostgresUser = cfg.PostgresUser
+	}
+	if cfg.PostgresPassword != "" {
+		newCfg.PostgresPassword = cfg.PostgresPassword
+	}
 	if cfg.ShortCodeLength != 0 {
 		newCfg.ShortCodeLength = cfg.ShortCodeLength
 	}

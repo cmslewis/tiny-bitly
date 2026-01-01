@@ -19,6 +19,12 @@ type Config struct {
 	MaxURLLength            int
 	ShortCodeLength         int
 
+	// Database
+	PostgresPort     int
+	PostgresDB       string
+	PostgresUser     string
+	PostgresPassword string
+
 	// Rate Limiting
 	RateLimitRequestsPerSecond int
 	RateLimitBurst             int
@@ -53,6 +59,11 @@ func LoadConfig() (*Config, error) {
 	shortCodeLength := getIntEnvOrDefault("SHORT_CODE_LENGTH", defaultShortCodeLength)
 	shortCodeTTL := getDurationEnvOrDefault("SHORT_CODE_TTL_MILLIS", defaultShortCodeTtlMillis)
 
+	postgresPort := getIntEnvOrDefault("POSTGRES_PORT", defaultPostgresPort)
+	postgresDB := getStringEnvOrDefault("POSTGRES_DB", defaultPostgresDB)
+	postgresUser := getStringEnvOrDefault("POSTGRES_USER", defaultPostgresUser)
+	postgresPassword := getStringEnvOrDefault("POSTGRES_PASSWORD", defaultPostgresPassword)
+
 	idleTimeout := getDurationEnvOrDefault("TIMEOUT_IDLE_MILLIS", defaultTimeoutIdleMillis)
 	requestTimeout := getDurationEnvOrDefault("TIMEOUT_REQUEST_MILLIS", defaultTimeoutRequestMillis)
 	readTimeout := getDurationEnvOrDefault("TIMEOUT_READ_MILLIS", defaultTimeoutReadMillis)
@@ -72,6 +83,11 @@ func LoadConfig() (*Config, error) {
 		MaxTriesCreateShortCode: maxTries,
 		MaxURLLength:            maxURLLength,
 		ShortCodeLength:         shortCodeLength,
+
+		PostgresPort:     postgresPort,
+		PostgresDB:       postgresDB,
+		PostgresUser:     postgresUser,
+		PostgresPassword: postgresPassword,
 
 		IdleTimeout:     idleTimeout,
 		ReadTimeout:     readTimeout,

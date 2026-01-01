@@ -61,3 +61,28 @@ tasks:
       - echo "Version={{.VERSION}}"
       - echo "Commit={{.COMMIT}}"
       - echo "BuildTime={{.BUILD_TIME}}"
+
+  migrate-build:
+    desc: Build the migration tool
+    cmds:
+      - echo "Building migrate tool..."
+      - go build -o bin/migrate ./cmd/migrate
+      - echo "Binary built at bin/migrate"
+
+  migrate:
+    desc: Run database migrations up
+    deps: [migrate-build]
+    cmds:
+      - ./bin/migrate -command=up
+
+  migrate-force:
+    desc: "Force migration version (use to fix dirty state). Usage: task migrate-force VERSION=1"
+    deps: [migrate-build]
+    cmds:
+      - ./bin/migrate -command=force -version={{.VERSION}}
+
+  migrate-version:
+    desc: Show current migration version
+    deps: [migrate-build]
+    cmds:
+      - ./bin/migrate -command=version
