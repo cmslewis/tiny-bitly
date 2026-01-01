@@ -1,0 +1,37 @@
+groups:
+  - name: api_performance
+    interval: 15s
+    rules:
+      # Alert warning when short code API requests exceed 100ms.
+      - alert: SlowShortCodeAPI
+        expr: |
+          histogram_quantile(0.95, 
+            rate(http_request_duration_seconds_bucket{method="GET", endpoint="/{shortCode}"}[5m])
+          ) > 0.1
+        for: 1m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Short code API requests are slower than 100ms"
+          description: |
+            The 95th percentile response time for GET /{shortCode} requests
+            is {{ $value }}s ({{ $value | humanizeDuration }}), exceeding the threshold of 100ms.
+            This affects user experience and may indicate performance issues.
+
+      # Alert critical when API requests exceed 1s.
+      - alert: VerySlowShortCodeAPI
+        expr: |
+          histogram_quantile(0.99, 
+            rate(http_request_duration_seconds_bucket{method="GET", endpoint="/{shortCode}"}[5m])
+          ) > 1.0
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+        annotations:
+          summary: "Short code API requests are slower than 1s"
+          description: |
+            The 99th percentile response time for GET /{shortCode} requests
+            is {{ $value }}s ({{ $value | humanizeDuration }}), exceeding the critical threshold of 1s.
+            Immediate investigation required - users are experiencing significant delays.
