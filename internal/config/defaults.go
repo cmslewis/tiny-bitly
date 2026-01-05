@@ -17,8 +17,8 @@ var defaultPostgresDB string = ""
 var defaultPostgresUser string = ""
 var defaultPostgresPassword string = ""
 
-var defaultRateLimitBurst int = 20
-var defaultRateLimitRequestsPerSecond int = 10
+var defaultRateLimitBurst int = 10
+var defaultRateLimitRequestsPerSecond int = 1
 var defaultShortCodeLength int = 6
 var defaultShortCodeTtlMillis int = 30000
 var defaultTimeoutIdleMillis int = 60000

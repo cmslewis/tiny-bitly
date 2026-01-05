@@ -43,7 +43,7 @@ tasks:
   test-load:
     desc: 'Run load test against the API. Example: task load-test ARGS="-users=100 -duration=60s"'
     vars:
-      ARGS: "-users=50 -duration=60s -read-ratio=0.8"
+      ARGS: "-users=100 -duration=60s -user-interval=2s"
     cmds:
       - go run ./cmd/test_load/main.go {{.ARGS}}
 

@@ -19,13 +19,13 @@ import (
 )
 
 type Config struct {
-	BaseURL          string
-	ConcurrentUsers  int
-	Duration         time.Duration
-	ReadRatio        float64 // 0.0 to 1.0, ratio of read requests vs write requests
-	TargetRPS        int     // Target requests per second (0 = unlimited)
-	WarmupDuration   time.Duration
-	CooldownDuration time.Duration
+	BaseURL             string
+	ConcurrentUsers     int
+	Duration            time.Duration
+	ReadRatio           float64       // 0.0 to 1.0, ratio of read requests vs write requests
+	UserRequestInterval time.Duration // Time between requests for each user (0 = as fast as possible)
+	WarmupDuration      time.Duration
+	CooldownDuration    time.Duration
 }
 
 type Stats struct {
@@ -48,28 +48,33 @@ type RequestResult struct {
 
 func main() {
 	var (
-		baseURL          = flag.String("url", "http://localhost:8080", "Base URL of the API")
-		concurrentUsers  = flag.Int("users", 50, "Number of concurrent users")
-		duration         = flag.Duration("duration", 60*time.Second, "Test duration")
-		readRatio        = flag.Float64("read-ratio", 0.8, "Ratio of read requests (0.0-1.0)")
-		targetRPS        = flag.Int("rps", 0, "Target requests per second (0 = unlimited)")
-		warmupDuration   = flag.Duration("warmup", 5*time.Second, "Warmup duration")
-		cooldownDuration = flag.Duration("cooldown", 5*time.Second, "Cooldown duration")
+		baseURL             = flag.String("url", "http://localhost:8080", "Base URL of the API")
+		concurrentUsers     = flag.Int("users", 50, "Number of concurrent users")
+		duration            = flag.Duration("duration", 60*time.Second, "Test duration")
+		readRatio           = flag.Float64("read-ratio", 0.8, "Ratio of read requests (0.0-1.0)")
+		userRequestInterval = flag.Duration("user-interval", 2*time.Second, "Time between requests for each user (e.g., 2s = 0.5 req/s per user)")
+		warmupDuration      = flag.Duration("warmup", 5*time.Second, "Warmup duration")
+		cooldownDuration    = flag.Duration("cooldown", 5*time.Second, "Cooldown duration")
 	)
 	flag.Parse()
 
 	cfg := Config{
-		BaseURL:          *baseURL,
-		ConcurrentUsers:  *concurrentUsers,
-		Duration:         *duration,
-		ReadRatio:        *readRatio,
-		TargetRPS:        *targetRPS,
-		WarmupDuration:   *warmupDuration,
-		CooldownDuration: *cooldownDuration,
+		BaseURL:             *baseURL,
+		ConcurrentUsers:     *concurrentUsers,
+		Duration:            *duration,
+		ReadRatio:           *readRatio,
+		UserRequestInterval: *userRequestInterval,
+		WarmupDuration:      *warmupDuration,
+		CooldownDuration:    *cooldownDuration,
 	}
 
 	if cfg.ReadRatio < 0 || cfg.ReadRatio > 1 {
 		log.Fatal("read-ratio must be between 0.0 and 1.0")
+	}
+
+	requestsPerUserPerSecond := 0.0
+	if cfg.UserRequestInterval > 0 {
+		requestsPerUserPerSecond = 1.0 / cfg.UserRequestInterval.Seconds()
 	}
 
 	fmt.Printf("Load Test Configuration:\n")
@@ -77,7 +82,12 @@ func main() {
 	fmt.Printf("  Concurrent Users: %d\n", cfg.ConcurrentUsers)
 	fmt.Printf("  Duration: %v\n", cfg.Duration)
 	fmt.Printf("  Read Ratio: %.1f%%\n", cfg.ReadRatio*100)
-	fmt.Printf("  Target RPS: %d\n", cfg.TargetRPS)
+	if cfg.UserRequestInterval > 0 {
+		fmt.Printf("  Request Interval per User: %v (%.2f req/s per user)\n", cfg.UserRequestInterval, requestsPerUserPerSecond)
+		fmt.Printf("  Expected Total RPS: ~%.2f\n", requestsPerUserPerSecond*float64(cfg.ConcurrentUsers))
+	} else {
+		fmt.Printf("  Request Interval per User: unlimited (as fast as possible)\n")
+	}
 	fmt.Printf("  Warmup: %v\n", cfg.WarmupDuration)
 	fmt.Printf("  Cooldown: %v\n", cfg.CooldownDuration)
 	fmt.Println()
@@ -91,7 +101,7 @@ func main() {
 		fmt.Printf("Warming up for %v...\n", cfg.WarmupDuration)
 		runPhase(cfg, stats, cfg.WarmupDuration, true)
 		stats.Reset()
-		fmt.Println("Warmup complete.\n")
+		fmt.Println("Warmup complete.")
 	}
 
 	// Main test phase
@@ -177,19 +187,11 @@ func runPhase(cfg Config, stats *Stats, duration time.Duration, isWarmup bool) {
 		},
 	}
 
-	// Rate limiter if target RPS is set
-	var ticker *time.Ticker
-	if cfg.TargetRPS > 0 {
-		interval := time.Second / time.Duration(cfg.TargetRPS)
-		ticker = time.NewTicker(interval)
-		defer ticker.Stop()
-	}
-
 	// Track short codes created during warmup for read testing
 	shortCodes := make([]string, 0, 1000)
 	var shortCodesMu sync.Mutex
 
-	// Start workers
+	// Start workers (each simulates a user)
 	for i := 0; i < cfg.ConcurrentUsers; i++ {
 		wg.Add(1)
 		go func(workerID int) {
@@ -198,13 +200,21 @@ func runPhase(cfg Config, stats *Stats, duration time.Duration, isWarmup bool) {
 			// Seed random short codes for this worker
 			shortCodeSeed := fmt.Sprintf("load%d", workerID)
 
+			// Create a ticker for this user's request interval
+			var userTicker *time.Ticker
+			if cfg.UserRequestInterval > 0 {
+				userTicker = time.NewTicker(cfg.UserRequestInterval)
+				defer userTicker.Stop()
+			}
+
 			for {
 				select {
 				case <-ctx.Done():
 					return
 				default:
-					if cfg.TargetRPS > 0 {
-						<-ticker.C
+					// Wait for the user's request interval if configured
+					if userTicker != nil {
+						<-userTicker.C
 					}
 
 					// Decide read vs write based on ratio
@@ -225,6 +235,13 @@ func runPhase(cfg Config, stats *Stats, duration time.Duration, isWarmup bool) {
 							}
 							shortCodesMu.Unlock()
 						}
+					}
+
+					// If no interval is set, yield to allow other goroutines to run
+					// but still make requests as fast as possible
+					if userTicker == nil {
+						// Small yield to prevent completely starving other goroutines
+						time.Sleep(1 * time.Millisecond)
 					}
 				}
 			}
