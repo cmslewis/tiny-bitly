@@ -54,6 +54,12 @@ tasks:
       - rm -f coverage.out coverage.html
       - echo "Cleaned build artifacts"
 
+  db:
+    desc: Access the Postgres database in Docker
+    cmds:
+      - docker exec -it tiny-bitly-postgres-1 psql -U admin -d tiny-bitly
+      - \c tiny-bitly
+
   version:
     desc: Show current version info
     cmds:
