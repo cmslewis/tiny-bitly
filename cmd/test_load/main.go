@@ -38,14 +38,24 @@ type Stats struct {
 	Timeouts           int64
 	ServerErrors       int64
 	ClientErrors       int64
-	Latencies          []time.Duration
-	mu                 sync.Mutex
+	// Separate tracking for read vs write requests
+	ReadRequests      int64
+	WriteRequests     int64
+	ReadSuccessful    int64
+	WriteSuccessful   int64
+	ReadRateLimited   int64
+	WriteRateLimited  int64
+	ReadClientErrors  int64
+	WriteClientErrors int64
+	Latencies         []time.Duration
+	mu                sync.Mutex
 }
 
 type RequestResult struct {
 	Duration   time.Duration
 	StatusCode int
 	Error      error
+	IsWrite    bool // true for write requests, false for read requests
 }
 
 func main() {
@@ -103,6 +113,14 @@ func main() {
 	fmt.Printf("  Cooldown: %v\n", cfg.CooldownDuration)
 	fmt.Println()
 
+	// Check if server is healthy before starting the test.
+	fmt.Printf("Checking server health at %s/health...\n", cfg.BaseURL)
+	if err := checkHealth(cfg.BaseURL); err != nil {
+		log.Fatalf("Health check failed: %v. Please ensure the server is running and accessible.", err)
+	}
+	fmt.Println("Health check passed.")
+	fmt.Println()
+
 	stats := &Stats{
 		Latencies: make([]time.Duration, 0, 100000),
 	}
@@ -132,6 +150,25 @@ func main() {
 	printResults(stats, actualDuration)
 }
 
+func checkHealth(baseURL string) error {
+	client := &http.Client{
+		Timeout: 5 * time.Second,
+	}
+
+	healthURL := fmt.Sprintf("%s/health", baseURL)
+	resp, err := client.Get(healthURL)
+	if err != nil {
+		return fmt.Errorf("failed to connect to health endpoint: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("health endpoint returned status %d (expected 200)", resp.StatusCode)
+	}
+
+	return nil
+}
+
 func (s *Stats) Reset() {
 	atomic.StoreInt64(&s.TotalRequests, 0)
 	atomic.StoreInt64(&s.SuccessfulRequests, 0)
@@ -140,6 +177,14 @@ func (s *Stats) Reset() {
 	atomic.StoreInt64(&s.Timeouts, 0)
 	atomic.StoreInt64(&s.ServerErrors, 0)
 	atomic.StoreInt64(&s.ClientErrors, 0)
+	atomic.StoreInt64(&s.ReadRequests, 0)
+	atomic.StoreInt64(&s.WriteRequests, 0)
+	atomic.StoreInt64(&s.ReadSuccessful, 0)
+	atomic.StoreInt64(&s.WriteSuccessful, 0)
+	atomic.StoreInt64(&s.ReadRateLimited, 0)
+	atomic.StoreInt64(&s.WriteRateLimited, 0)
+	atomic.StoreInt64(&s.ReadClientErrors, 0)
+	atomic.StoreInt64(&s.WriteClientErrors, 0)
 	s.mu.Lock()
 	s.Latencies = s.Latencies[:0]
 	s.mu.Unlock()
@@ -147,6 +192,13 @@ func (s *Stats) Reset() {
 
 func (s *Stats) Record(result RequestResult) {
 	atomic.AddInt64(&s.TotalRequests, 1)
+
+	// Track read vs write
+	if result.IsWrite {
+		atomic.AddInt64(&s.WriteRequests, 1)
+	} else {
+		atomic.AddInt64(&s.ReadRequests, 1)
+	}
 
 	if result.Error != nil {
 		atomic.AddInt64(&s.FailedRequests, 1)
@@ -159,18 +211,33 @@ func (s *Stats) Record(result RequestResult) {
 	switch {
 	case result.StatusCode == 200 || result.StatusCode == 201 || result.StatusCode == 302:
 		atomic.AddInt64(&s.SuccessfulRequests, 1)
+		if result.IsWrite {
+			atomic.AddInt64(&s.WriteSuccessful, 1)
+		} else {
+			atomic.AddInt64(&s.ReadSuccessful, 1)
+		}
 		s.mu.Lock()
 		s.Latencies = append(s.Latencies, result.Duration)
 		s.mu.Unlock()
 	case result.StatusCode == 429:
 		atomic.AddInt64(&s.RateLimited, 1)
 		atomic.AddInt64(&s.FailedRequests, 1)
+		if result.IsWrite {
+			atomic.AddInt64(&s.WriteRateLimited, 1)
+		} else {
+			atomic.AddInt64(&s.ReadRateLimited, 1)
+		}
 	case result.StatusCode >= 500:
 		atomic.AddInt64(&s.ServerErrors, 1)
 		atomic.AddInt64(&s.FailedRequests, 1)
 	case result.StatusCode >= 400:
 		atomic.AddInt64(&s.ClientErrors, 1)
 		atomic.AddInt64(&s.FailedRequests, 1)
+		if result.IsWrite {
+			atomic.AddInt64(&s.WriteClientErrors, 1)
+		} else {
+			atomic.AddInt64(&s.ReadClientErrors, 1)
+		}
 	}
 }
 
@@ -208,9 +275,6 @@ func runPhase(cfg Config, stats *Stats, duration time.Duration, isWarmup bool) {
 		go func(workerID int) {
 			defer wg.Done()
 
-			// Seed random short codes for this worker
-			shortCodeSeed := fmt.Sprintf("load%d", workerID)
-
 			// Create a ticker for this user's request interval
 			var userTicker *time.Ticker
 			if cfg.UserRequestInterval > 0 {
@@ -230,16 +294,29 @@ func runPhase(cfg Config, stats *Stats, duration time.Duration, isWarmup bool) {
 
 					// Decide read vs write based on ratio
 					if shouldRead(cfg.ReadRatio) {
-						// Read request
-						shortCode := generateShortCode(shortCodeSeed, time.Now().UnixNano())
+						// Read request - use an existing short code
+						shortCodesMu.Lock()
+						if len(shortCodes) == 0 {
+							// No short codes available yet, skip this read
+							shortCodesMu.Unlock()
+							continue
+						}
+						// Pick a random existing short code
+						idx := rand.Intn(len(shortCodes))
+						shortCode := shortCodes[idx]
+						shortCodesMu.Unlock()
+
 						result := makeReadRequest(client, cfg.BaseURL, shortCode)
+						result.IsWrite = false
 						stats.Record(result)
 					} else {
 						// Write request
 						url := fmt.Sprintf("https://example.com/test?worker=%d&time=%d", workerID, time.Now().UnixNano())
 						result, createdShortCode := makeWriteRequest(client, cfg.BaseURL, url)
+						result.IsWrite = true
 						stats.Record(result)
-						if createdShortCode != "" && !isWarmup {
+						if createdShortCode != "" {
+							// Store short codes from both warmup and main test
 							shortCodesMu.Lock()
 							if len(shortCodes) < 1000 {
 								shortCodes = append(shortCodes, createdShortCode)
@@ -268,19 +345,6 @@ func runPhase(cfg Config, stats *Stats, duration time.Duration, isWarmup bool) {
 func shouldRead(readRatio float64) bool {
 	// Random decision based on ratio
 	return rand.Float64() < readRatio
-}
-
-func generateShortCode(seed string, timestamp int64) string {
-	// Generate a deterministic short code for testing
-	hash := fmt.Sprintf("%s%d", seed, timestamp)
-	return hash[:min(6, len(hash))]
-}
-
-func min(a, b int) int {
-	if a < b {
-		return a
-	}
-	return b
 }
 
 func makeReadRequest(client *http.Client, baseURL, shortCode string) RequestResult {
@@ -409,6 +473,31 @@ func printResults(stats *Stats, duration time.Duration) {
 	fmt.Printf("  Server Errors (5xx): %d\n", serverErrors)
 	fmt.Printf("  Client Errors (4xx): %d\n", clientErrors)
 	fmt.Println()
+
+	// Read vs Write breakdown
+	readRequests := atomic.LoadInt64(&stats.ReadRequests)
+	writeRequests := atomic.LoadInt64(&stats.WriteRequests)
+	readSuccessful := atomic.LoadInt64(&stats.ReadSuccessful)
+	writeSuccessful := atomic.LoadInt64(&stats.WriteSuccessful)
+	readRateLimited := atomic.LoadInt64(&stats.ReadRateLimited)
+	writeRateLimited := atomic.LoadInt64(&stats.WriteRateLimited)
+	readClientErrors := atomic.LoadInt64(&stats.ReadClientErrors)
+	writeClientErrors := atomic.LoadInt64(&stats.WriteClientErrors)
+
+	if readRequests > 0 || writeRequests > 0 {
+		fmt.Println("Request Type Breakdown:")
+		if readRequests > 0 {
+			readSuccessRate := float64(readSuccessful) / float64(readRequests) * 100
+			fmt.Printf("  Reads:  %d total, %d successful (%.2f%%), %d rate limited, %d client errors\n",
+				readRequests, readSuccessful, readSuccessRate, readRateLimited, readClientErrors)
+		}
+		if writeRequests > 0 {
+			writeSuccessRate := float64(writeSuccessful) / float64(writeRequests) * 100
+			fmt.Printf("  Writes: %d total, %d successful (%.2f%%), %d rate limited, %d client errors\n",
+				writeRequests, writeSuccessful, writeSuccessRate, writeRateLimited, writeClientErrors)
+		}
+		fmt.Println()
+	}
 
 	// Latency statistics
 	stats.mu.Lock()
