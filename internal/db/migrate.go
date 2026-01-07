@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database"
+	_ "github.com/golang-migrate/migrate/v4/source/file" // Must blank-import the file driver, else migration fails
 )
 
 // RunMigrations runs all database "up" migrations in sequential order.
