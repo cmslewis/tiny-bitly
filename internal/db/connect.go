@@ -1,8 +1,10 @@
 package db
 
 import (
+	"context"
 	"database/sql"
 	"fmt"
+	"time"
 
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
@@ -27,5 +29,39 @@ func OpenConnectionGORM(port int, dbName string, user string, password string) (
 	if err != nil {
 		return nil, err
 	}
+
+	// Configure connection pool for better concurrency handling
+	// Get the underlying *sql.DB to configure pool settings
+	sqlDB, err := db.DB()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get underlying sql.DB: %w", err)
+	}
+
+	// SetMaxOpenConns: Maximum number of open connections to the database
+	// Should be less than PostgreSQL's max_connections setting
+	// For high concurrency, use 25-100 connections (PostgreSQL performs best with 100-300 total)
+	sqlDB.SetMaxOpenConns(100)
+
+	// SetMaxIdleConns: Maximum number of connections in the idle connection pool
+	// Should be less than or equal to SetMaxOpenConns
+	// Keeps connections warm for reuse, reducing connection overhead
+	sqlDB.SetMaxIdleConns(25)
+
+	// SetConnMaxLifetime: Maximum amount of time a connection may be reused
+	// Prevents stale connections and helps with load balancer connection rotation
+	sqlDB.SetConnMaxLifetime(5 * time.Minute)
+
+	// SetConnMaxIdleTime: Maximum amount of time a connection may be idle
+	// Closes idle connections to free up resources
+	sqlDB.SetConnMaxIdleTime(1 * time.Minute)
+
+	// Test the connection with a timeout
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	if err := sqlDB.PingContext(ctx); err != nil {
+		return nil, fmt.Errorf("failed to ping database: %w", err)
+	}
+
 	return db, nil
 }
