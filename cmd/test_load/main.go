@@ -11,7 +11,9 @@ import (
 	"math"
 	"math/rand"
 	"net/http"
+	"os"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -47,8 +49,17 @@ type RequestResult struct {
 }
 
 func main() {
+	// Get API port from environment variable, default to 8080.
+	apiPort := 8080
+	if portStr := os.Getenv("API_PORT"); portStr != "" {
+		if port, err := strconv.Atoi(portStr); err == nil {
+			apiPort = port
+		}
+	}
+	defaultURL := fmt.Sprintf("http://localhost:%d", apiPort)
+
 	var (
-		baseURL             = flag.String("url", "http://localhost:8080", "Base URL of the API")
+		baseURL             = flag.String("url", defaultURL, "Base URL of the API")
 		concurrentUsers     = flag.Int("users", 50, "Number of concurrent users")
 		duration            = flag.Duration("duration", 60*time.Second, "Test duration")
 		readRatio           = flag.Float64("read-ratio", 0.8, "Ratio of read requests (0.0-1.0)")
