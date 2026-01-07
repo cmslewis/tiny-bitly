@@ -72,25 +72,41 @@ func main() {
 		baseURL             = flag.String("url", defaultURL, "Base URL of the API")
 		concurrentUsers     = flag.Int("users", 50, "Number of concurrent users")
 		duration            = flag.Duration("duration", 60*time.Second, "Test duration")
-		readRatio           = flag.Float64("read-ratio", 0.8, "Ratio of read requests (0.0-1.0)")
+		readRatio           = flag.Float64("read-ratio", 0.8, "Ratio of read requests (0.0-1.0). Ignored if -write-only or -read-only is set")
 		userRequestInterval = flag.Duration("user-interval", 2*time.Second, "Time between requests for each user (e.g., 2s = 0.5 req/s per user)")
 		warmupDuration      = flag.Duration("warmup", 5*time.Second, "Warmup duration")
 		cooldownDuration    = flag.Duration("cooldown", 5*time.Second, "Cooldown duration")
+		writeOnly           = flag.Bool("write-only", false, "Only perform write requests (creates short URLs)")
+		readOnly            = flag.Bool("read-only", false, "Only perform read requests (requires warmup to create codes first)")
+		warmupWrites        = flag.Int("warmup-writes", 1000, "Number of short codes to create during warmup for read-only mode")
 	)
 	flag.Parse()
+
+	// Validate flags
+	if *writeOnly && *readOnly {
+		log.Fatal("Cannot specify both -write-only and -read-only")
+	}
+
+	// Override readRatio based on mode flags
+	effectiveReadRatio := *readRatio
+	if *writeOnly {
+		effectiveReadRatio = 0.0
+	} else if *readOnly {
+		effectiveReadRatio = 1.0
+	}
+
+	if effectiveReadRatio < 0 || effectiveReadRatio > 1 {
+		log.Fatal("read-ratio must be between 0.0 and 1.0")
+	}
 
 	cfg := Config{
 		BaseURL:             *baseURL,
 		ConcurrentUsers:     *concurrentUsers,
 		Duration:            *duration,
-		ReadRatio:           *readRatio,
+		ReadRatio:           effectiveReadRatio,
 		UserRequestInterval: *userRequestInterval,
 		WarmupDuration:      *warmupDuration,
 		CooldownDuration:    *cooldownDuration,
-	}
-
-	if cfg.ReadRatio < 0 || cfg.ReadRatio > 1 {
-		log.Fatal("read-ratio must be between 0.0 and 1.0")
 	}
 
 	requestsPerUserPerSecond := 0.0
@@ -102,7 +118,14 @@ func main() {
 	fmt.Printf("  Base URL: %s\n", cfg.BaseURL)
 	fmt.Printf("  Concurrent Users: %d\n", cfg.ConcurrentUsers)
 	fmt.Printf("  Duration: %v\n", cfg.Duration)
-	fmt.Printf("  Read Ratio: %.1f%%\n", cfg.ReadRatio*100)
+	if *writeOnly {
+		fmt.Printf("  Mode: Write-only (100%% writes)\n")
+	} else if *readOnly {
+		fmt.Printf("  Mode: Read-only (100%% reads)\n")
+		fmt.Printf("  Warmup writes: %d short codes\n", *warmupWrites)
+	} else {
+		fmt.Printf("  Read Ratio: %.1f%%\n", cfg.ReadRatio*100)
+	}
 	if cfg.UserRequestInterval > 0 {
 		fmt.Printf("  Request Interval per User: %v (%.2f req/s per user)\n", cfg.UserRequestInterval, requestsPerUserPerSecond)
 		fmt.Printf("  Expected Total RPS: ~%.2f\n", requestsPerUserPerSecond*float64(cfg.ConcurrentUsers))
@@ -126,9 +149,15 @@ func main() {
 	}
 
 	// Warmup phase
-	if cfg.WarmupDuration > 0 {
+	var preWarmedShortCodes []string
+	if *readOnly {
+		// For read-only mode, do sequential writes to populate the database
+		fmt.Printf("Warming up: Creating %d short codes sequentially...\n", *warmupWrites)
+		preWarmedShortCodes = warmupSequentialWrites(cfg.BaseURL, *warmupWrites)
+		fmt.Printf("Warmup complete. Created %d short codes.\n", len(preWarmedShortCodes))
+	} else if cfg.WarmupDuration > 0 {
 		fmt.Printf("Warming up for %v...\n", cfg.WarmupDuration)
-		runPhase(cfg, stats, cfg.WarmupDuration, true)
+		runPhase(cfg, stats, cfg.WarmupDuration, true, nil)
 		stats.Reset()
 		fmt.Println("Warmup complete.")
 	}
@@ -136,7 +165,7 @@ func main() {
 	// Main test phase
 	fmt.Printf("Starting load test for %v...\n", cfg.Duration)
 	startTime := time.Now()
-	runPhase(cfg, stats, cfg.Duration, false)
+	runPhase(cfg, stats, cfg.Duration, false, preWarmedShortCodes)
 	endTime := time.Now()
 	actualDuration := endTime.Sub(startTime)
 
@@ -251,7 +280,66 @@ func isTimeout(err error) bool {
 		fmt.Sprintf("%v", err) == "i/o timeout"
 }
 
-func runPhase(cfg Config, stats *Stats, duration time.Duration, isWarmup bool) {
+func warmupSequentialWrites(baseURL string, numWrites int) []string {
+	client := &http.Client{
+		Timeout: 30 * time.Second,
+	}
+
+	shortCodes := make([]string, 0, numWrites)
+	fmt.Printf("Creating %d short codes sequentially...\n", numWrites)
+
+	var errors int
+	startTime := time.Now()
+
+	for i := 0; i < numWrites; i++ {
+		url := fmt.Sprintf("https://example.com/warmup?index=%d&time=%d", i, time.Now().UnixNano())
+		result, createdShortCode := makeWriteRequest(client, baseURL, url)
+
+		if result.Error != nil {
+			errors++
+			if errors <= 3 {
+				// Log first few errors as samples
+				fmt.Printf("\nError creating code %d: %v\n", i+1, result.Error)
+			}
+		} else if result.StatusCode == 429 {
+			errors++
+			if errors <= 3 {
+				fmt.Printf("\nRate limited on code %d (429). Consider disabling rate limiting for warmup.\n", i+1)
+			}
+			// Add a small delay if rate limited
+			time.Sleep(100 * time.Millisecond)
+		} else if result.StatusCode == 201 && createdShortCode != "" {
+			shortCodes = append(shortCodes, createdShortCode)
+		} else if result.StatusCode != 201 {
+			errors++
+			if errors <= 3 {
+				// Log first few non-201 statuses as samples
+				fmt.Printf("\nUnexpected status %d for code %d\n", result.StatusCode, i+1)
+			}
+		}
+
+		// Small delay to avoid overwhelming the server and respect rate limits
+		// Even in sequential mode, we want to be gentle
+		time.Sleep(10 * time.Millisecond)
+
+		// Progress indicator - show every 10 codes and include success count
+		if (i+1)%10 == 0 {
+			fmt.Printf("\rProgress: %d/%d created, %d errors", len(shortCodes), i+1, errors)
+		}
+	}
+
+	elapsed := time.Since(startTime)
+	fmt.Printf("\nWarmup complete: %d codes created in %v (%.2f codes/sec)\n",
+		len(shortCodes), elapsed.Round(time.Second), float64(len(shortCodes))/elapsed.Seconds())
+
+	if errors > 0 {
+		fmt.Printf("Warning: %d errors occurred during warmup\n", errors)
+	}
+
+	return shortCodes
+}
+
+func runPhase(cfg Config, stats *Stats, duration time.Duration, isWarmup bool, preWarmedShortCodes []string) {
 	ctx, cancel := context.WithTimeout(context.Background(), duration+10*time.Second)
 	defer cancel()
 
@@ -267,6 +355,10 @@ func runPhase(cfg Config, stats *Stats, duration time.Duration, isWarmup bool) {
 
 	// Track short codes created during warmup for read testing
 	shortCodes := make([]string, 0, 1000)
+	if preWarmedShortCodes != nil {
+		// Use pre-warmed codes for read-only mode
+		shortCodes = append(shortCodes, preWarmedShortCodes...)
+	}
 	var shortCodesMu sync.Mutex
 
 	// Start workers (each simulates a user)
