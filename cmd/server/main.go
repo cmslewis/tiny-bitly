@@ -47,10 +47,12 @@ func main() {
 
 	// Initialize Redis (non-fatal - will fall back to database-only if Redis is unavailable)
 	ctx := context.Background()
+	isRedisAvailable := false
 	if err := cache.Init(ctx); err != nil {
 		slog.Warn("Redis initialization failed, continuing without cache", "error", err)
 	} else {
 		slog.Info("Redis initialized successfully")
+		isRedisAvailable = true
 	}
 
 	// Initialize services.
@@ -60,11 +62,15 @@ func main() {
 	}
 
 	// Try to wrap with cache if Redis is available.
-	cachedDAO, err := cacheDAO.NewURLRecordCachedDAO(appDAO.URLRecordDAO)
-	if err == nil {
-		// Redis is available, use cached DAO
-		appDAO.SetURLRecordDAO(cachedDAO)
-		slog.Info("URL record DAO wrapped with Redis cache")
+	if isRedisAvailable {
+		cachedDAO, err := cacheDAO.NewURLRecordCachedDAO(appDAO.URLRecordDAO)
+		if err == nil {
+			// Redis is available, use cached DAO
+			appDAO.SetURLRecordDAO(cachedDAO)
+			slog.Info("URL record DAO wrapped with Redis cache", "poolSize", 1000, "minIdleConns", 100)
+		} else {
+			slog.Warn("Failed to create cached DAO, using database-only", "error", err)
+		}
 	} else {
 		slog.Info("Using database-only DAO (Redis cache unavailable)")
 	}

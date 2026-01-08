@@ -52,22 +52,28 @@ func (d *URLRecordCachedDAO) Create(ctx context.Context, urlRecord model.URLReco
 }
 
 // GetByShortCode checks Redis cache first, then falls back to the underlying DAO.
+// Note: We don't use mutexes here - allowing some duplicate DB queries under
+// extreme load is better than serializing all requests. Redis handles concurrent
+// reads efficiently, and the database connection pool handles concurrent queries.
 func (d *URLRecordCachedDAO) GetByShortCode(ctx context.Context, shortCode string) (*model.URLRecordEntity, error) {
-	// Try to get from cache
-	cached, err := d.getFromCache(ctx, shortCode)
-	if err == nil && cached != nil {
+	// Try to get from cache first
+	cachedEntity, err := d.getFromCache(ctx, shortCode)
+	if err == nil && cachedEntity != nil {
 		// Cache hit - verify it hasn't expired
-		if !cached.IsExpired() {
-			return cached, nil
+		if !cachedEntity.IsExpired() {
+			return cachedEntity, nil
 		}
 		// Expired - remove from cache and fall through to database
 		d.deleteFromCache(ctx, shortCode)
 	} else if err != redis.Nil {
 		// Redis error (not a cache miss) - log but continue to database
-		slog.Warn("Redis error during cache lookup", "error", err, "shortCode", shortCode)
+		// This could indicate Redis is down or overloaded
+		slog.Debug("Redis error during cache lookup", "error", err, "shortCode", shortCode)
 	}
 
 	// Cache miss or expired - get from database
+	// Multiple concurrent requests for the same key may all hit the DB,
+	// but that's acceptable - the DB connection pool handles it efficiently.
 	entity, err := d.underlying.GetByShortCode(ctx, shortCode)
 	if err != nil {
 		return nil, err
@@ -77,7 +83,7 @@ func (d *URLRecordCachedDAO) GetByShortCode(ctx context.Context, shortCode strin
 	if entity != nil {
 		if err := d.setCache(ctx, entity); err != nil {
 			// Log but don't fail the read operation if caching fails
-			slog.Warn("Failed to cache retrieved record", "error", err, "shortCode", shortCode)
+			slog.Debug("Failed to cache retrieved record", "error", err, "shortCode", shortCode)
 		}
 	}
 

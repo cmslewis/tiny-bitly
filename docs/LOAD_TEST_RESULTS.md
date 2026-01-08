@@ -597,3 +597,154 @@ Performance Indicators:
   ⚠️  Success rate is below 95% - system may be overloaded
 </pre>
 </details>
+
+
+## V4
+
+- Added Redis cache in front of database
+
+### Concurrent reads
+
+| Metric | 100 users | 1000 | 10k | 25k | 50k | 100k |
+| --- | --- | --- | --- | --- | --- | --- |
+| (Before Redis) P95 | 68.8ms | 681ms | 24.6s | 24.2s |  |  |
+| (Before Redis) Requests Failed | 0% | 0% | 27.3% | 73.5% |  |  |
+| (After Redis) P95 | 27.2ms | 519.5ms | 20.89s | 25.9s |  |  |
+| (After Redis) Requests Failed | 0% | 0% | 16.2% | 74.1% |  |
+
+**Analysis:**
+- **100-1000 users**: Redis provides significant improvement (60% faster at 100 users, 24% faster at 1000 users)
+- **10k users**: Redis provides modest improvement (15% faster, 11% fewer failures)
+- **25k users**: Redis provides minimal/no improvement (actually 7% slower P95, similar failure rate)
+
+**Conclusion:** Redis helps significantly at moderate concurrency (100-1000 users) but becomes a bottleneck at extreme concurrency (25k+ users). At 25k concurrent users, Redis's single-threaded nature and network overhead outweigh the benefits. The system is fundamentally overloaded at this scale.  |
+
+<details>
+<summary>100 users</summary>
+<pre>
+Duration:           30s
+Total Requests:     3000
+Successful:         3000 (100.00%)
+Failed:             0 (0.00%)
+Throughput:         99.91 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 0
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  3000 total, 3000 successful (100.00%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    5.001ms
+  P50:    22.001ms
+  P75:    24.504ms
+  P90:    26.529ms
+  P95:    27.201ms
+  P99:    28.804ms
+  P99.9:  30.009ms
+  Max:    31.838ms
+  Avg:    21.625ms
+</pre>
+</details>
+
+<details>
+<summary>1000 users</summary>
+<pre>
+Duration:           31s
+Total Requests:     30000
+Successful:         30000 (100.00%)
+Failed:             0 (0.00%)
+Throughput:         982.50 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 0
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  30000 total, 30000 successful (100.00%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    6.706ms
+  P50:    138.844ms
+  P75:    450.615ms
+  P90:    505.77ms
+  P95:    519.472ms
+  P99:    530.007ms
+  P99.9:  537.175ms
+  Max:    539.654ms
+  Avg:    276.467ms
+</pre>
+</details>
+
+<details>
+<summary>10000 users</summary>
+<pre>
+Duration:           48s
+Total Requests:     34583
+Successful:         28980 (83.80%)
+Failed:             5603 (16.20%)
+Throughput:         724.67 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 237
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  34583 total, 28980 successful (83.80%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    82.803ms
+  P50:    6.575743s
+  P75:    14.995622s
+  P90:    18.981054s
+  P95:    20.885221s
+  P99:    25.194321s
+  P99.9:  28.782217s
+  Max:    29.720271s
+  Avg:    9.520643s
+
+Performance Indicators:
+  ⚠️  Success rate is below 95% - system may be overloaded
+</pre>
+</details>
+
+<details>
+<summary>25000 users</summary>
+<pre>
+Duration:           54s
+Total Requests:     65351
+Successful:         16950 (25.94%)
+Failed:             48401 (74.06%)
+Throughput:         1207.18 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 35
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  65351 total, 16950 successful (25.94%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    113.819ms
+  P50:    16.355997s
+  P75:    21.391239s
+  P90:    22.693976s
+  P95:    25.906221s
+  P99:    26.084736s
+  P99.9:  26.373341s
+  Max:    26.423236s
+  Avg:    17.521486s
+
+Performance Indicators:
+  ⚠️  Success rate is below 95% - system may be overloaded
+</pre>
+</details>
