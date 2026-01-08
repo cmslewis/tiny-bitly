@@ -10,8 +10,10 @@ import (
 	"syscall"
 	"time"
 
+	"tiny-bitly/internal/cache"
 	"tiny-bitly/internal/config"
 	"tiny-bitly/internal/dao"
+	cacheDAO "tiny-bitly/internal/dao/cache"
 	"tiny-bitly/internal/middleware"
 	"tiny-bitly/internal/service/create"
 	"tiny-bitly/internal/service/health"
@@ -43,10 +45,28 @@ func main() {
 	initRuntimeMetrics()
 	logVersionInfo()
 
+	// Initialize Redis (non-fatal - will fall back to database-only if Redis is unavailable)
+	ctx := context.Background()
+	if err := cache.Init(ctx); err != nil {
+		slog.Warn("Redis initialization failed, continuing without cache", "error", err)
+	} else {
+		slog.Info("Redis initialized successfully")
+	}
+
 	// Initialize services.
 	appDAO, err := dao.NewDatabaseDAO(cfg.PostgresPort, cfg.PostgresDB, cfg.PostgresUser, cfg.PostgresPassword)
 	if err != nil {
 		logFatal("Failed to initialize database DAO", "error", err)
+	}
+
+	// Try to wrap with cache if Redis is available.
+	cachedDAO, err := cacheDAO.NewURLRecordCachedDAO(appDAO.URLRecordDAO)
+	if err == nil {
+		// Redis is available, use cached DAO
+		appDAO.SetURLRecordDAO(cachedDAO)
+		slog.Info("URL record DAO wrapped with Redis cache")
+	} else {
+		slog.Info("Using database-only DAO (Redis cache unavailable)")
 	}
 	createService := create.NewService(*appDAO, cfg)
 	readService := read.NewService(*appDAO, cfg)

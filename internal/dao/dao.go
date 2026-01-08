@@ -27,7 +27,6 @@ func NewMemoryDAO() *DAO {
 }
 
 // NewDatabaseDAO creates a new DAO instance using the database implementation.
-// TODO: Implement the database DAO.
 func NewDatabaseDAO(dbPort int, dbName string, dbUser string, dbPassword string) (*DAO, error) {
 	urlRecordDAO, err := database.NewURLRecordDatabaseDAO(dbPort, dbName, dbUser, dbPassword)
 	if err != nil {
@@ -36,4 +35,10 @@ func NewDatabaseDAO(dbPort int, dbName string, dbUser string, dbPassword string)
 	return &DAO{
 		URLRecordDAO: urlRecordDAO,
 	}, nil
+}
+
+// SetURLRecordDAO allows setting a custom URLRecordDAO implementation.
+// This is useful for wrapping the DAO with caching.
+func (d *DAO) SetURLRecordDAO(dao URLRecordDAO) {
+	d.URLRecordDAO = dao
 }
