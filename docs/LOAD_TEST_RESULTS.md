@@ -748,3 +748,125 @@ Performance Indicators:
   ⚠️  Success rate is below 95% - system may be overloaded
 </pre>
 </details>
+
+## V5
+
+- Added multi-server high availability via NGINX
+
+### Concurrent reads
+
+| Metric | 100 users | 1000 | 10k | 25k | 50k | 100k |
+| --- | --- | --- | --- | --- | --- | --- |
+| (Before NGINX) P95 | 27.2ms | 519.5ms | 20.89s | 25.9s |  |  |
+| (Before NGINX) Requests Failed | 0% | 0% | 16.2% | 74.1% |  |
+| (After NGINX) P95 | 51.8ms | 366.5ms | 28.3s |  |  |  |
+| (After NGINX) Requests Failed | 0% | 47% | 99.9% |  |  |
+
+<details>
+<summary>100 users</summary>
+<pre>
+Duration:           30s
+Total Requests:     3000
+Successful:         3000 (100.00%)
+Failed:             0 (0.00%)
+Throughput:         99.86 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 0
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  3000 total, 3000 successful (100.00%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    13.238ms
+  P50:    41.99ms
+  P75:    45.954ms
+  P90:    49.685ms
+  P95:    51.825ms
+  P99:    53.988ms
+  P99.9:  56.297ms
+  Max:    56.515ms
+  Avg:    41.153ms
+
+</pre>
+</details>
+
+<details>
+<summary>1000 users</summary>
+<pre>
+Duration:           31s
+Total Requests:     29351
+Successful:         15557 (53.00%)
+Failed:             13794 (47.00%)
+Throughput:         946.61 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 326
+  Client Errors (4xx): 644
+
+Request Type Breakdown:
+  Reads:  29351 total, 15557 successful (53.00%), 0 rate limited, 644 client errors
+
+Latency Statistics (successful requests only):
+  Min:    16.864ms
+  P50:    225.999ms
+  P75:    253.294ms
+  P90:    283.39ms
+  P95:    366.524ms
+  P99:    1.264748s
+  P99.9:  1.29856s
+  Max:    1.303192s
+  Avg:    250.455ms
+
+Performance Indicators:
+  ⚠️  Success rate is below 95% - system may be overloaded
+  ⚠️  High server error rate (1.11%) - check application logs
+</pre>
+</details>
+
+<details>
+<summary>10000 users</summary>
+<pre>
+Duration:           57s
+Total Requests:     36696
+Successful:         54 (0.15%)
+Failed:             36642 (99.85%)
+Throughput:         640.55 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 6464
+  Client Errors (4xx): 13735
+
+Request Type Breakdown:
+  Reads:  36696 total, 54 successful (0.15%), 0 rate limited, 13735 client errors
+
+Latency Statistics (successful requests only):
+  Min:    55.002ms
+  P50:    13.395032s
+  P75:    24.803981s
+  P90:    27.167121s
+  P95:    28.286536s
+  P99:    29.297984s
+  P99.9:  29.297984s
+  Max:    29.297984s
+  Avg:    12.454335s
+
+Performance Indicators:
+  ⚠️  Success rate is below 95% - system may be overloaded
+  ⚠️  High server error rate (17.61%) - check application logs
+</pre>
+</details>
+
+<details>
+<summary>25000 users</summary>
+<pre>
+
+</pre>
+</details>
