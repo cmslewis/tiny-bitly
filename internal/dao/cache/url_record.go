@@ -7,7 +7,7 @@ import (
 	"log/slog"
 	"time"
 
-	"tiny-bitly/internal/cache"
+	redisCache "tiny-bitly/internal/cache"
 	"tiny-bitly/internal/dao"
 	"tiny-bitly/internal/model"
 
@@ -16,20 +16,22 @@ import (
 
 // URLRecordCachedDAO wraps a URLRecordDAO with Redis caching for read operations.
 type URLRecordCachedDAO struct {
-	underlying dao.URLRecordDAO
-	redis      *redis.Client
+	underlying     dao.URLRecordDAO
+	redis          *redis.Client
+	circuitBreaker *redisCache.CircuitBreaker
 }
 
 // NewURLRecordCachedDAO creates a new cached DAO that wraps the underlying DAO.
 func NewURLRecordCachedDAO(underlying dao.URLRecordDAO) (*URLRecordCachedDAO, error) {
-	redisClient := cache.GetClient()
+	redisClient := redisCache.GetClient()
 	if redisClient == nil {
 		return nil, fmt.Errorf("Redis client not initialized")
 	}
 
 	return &URLRecordCachedDAO{
-		underlying: underlying,
-		redis:      redisClient,
+		underlying:     underlying,
+		redis:          redisClient,
+		circuitBreaker: redisCache.NewCircuitBreaker(),
 	}, nil
 }
 
@@ -40,11 +42,13 @@ func (d *URLRecordCachedDAO) Create(ctx context.Context, urlRecord model.URLReco
 		return nil, err
 	}
 
-	// Cache the newly created record
-	if entity != nil {
+	// Cache the newly created record (non-blocking - failures don't affect create)
+	if entity != nil && !d.circuitBreaker.IsOpen() {
 		if err := d.setCache(ctx, entity); err != nil {
-			// Log but don't fail the create operation if caching fails
-			slog.Warn("Failed to cache created record", "error", err, "shortCode", urlRecord.ShortCode)
+			d.circuitBreaker.RecordFailure()
+			slog.Warn("Failed to cache created record", "error", err, "shortCode", urlRecord.ShortCode, "circuitState", d.circuitBreaker.GetState())
+		} else {
+			d.circuitBreaker.RecordSuccess()
 		}
 	}
 
@@ -52,23 +56,32 @@ func (d *URLRecordCachedDAO) Create(ctx context.Context, urlRecord model.URLReco
 }
 
 // GetByShortCode checks Redis cache first, then falls back to the underlying DAO.
-// Note: We don't use mutexes here - allowing some duplicate DB queries under
-// extreme load is better than serializing all requests. Redis handles concurrent
-// reads efficiently, and the database connection pool handles concurrent queries.
+// Uses circuit breaker to prevent cascading failures when Redis is down.
 func (d *URLRecordCachedDAO) GetByShortCode(ctx context.Context, shortCode string) (*model.URLRecordEntity, error) {
-	// Try to get from cache first
-	cachedEntity, err := d.getFromCache(ctx, shortCode)
-	if err == nil && cachedEntity != nil {
-		// Cache hit - verify it hasn't expired
-		if !cachedEntity.IsExpired() {
-			return cachedEntity, nil
+	// Check circuit breaker - if open, skip Redis and go straight to DB
+	if !d.circuitBreaker.IsOpen() {
+		// Try to get from cache first
+		cachedEntity, err := d.getFromCache(ctx, shortCode)
+		if err == nil && cachedEntity != nil {
+			// Cache hit - verify it hasn't expired
+			if !cachedEntity.IsExpired() {
+				d.circuitBreaker.RecordSuccess()
+				return cachedEntity, nil
+			}
+			// Expired - remove from cache and fall through to database
+			d.deleteFromCache(ctx, shortCode)
+			d.circuitBreaker.RecordSuccess() // Cache operation succeeded
+		} else if err != redis.Nil {
+			// Redis error (not a cache miss) - record failure
+			d.circuitBreaker.RecordFailure()
+			slog.Debug("Redis error during cache lookup", "error", err, "shortCode", shortCode, "circuitState", d.circuitBreaker.GetState())
+		} else {
+			// Cache miss (redis.Nil) - this is normal, not a failure
+			d.circuitBreaker.RecordSuccess()
 		}
-		// Expired - remove from cache and fall through to database
-		d.deleteFromCache(ctx, shortCode)
-	} else if err != redis.Nil {
-		// Redis error (not a cache miss) - log but continue to database
-		// This could indicate Redis is down or overloaded
-		slog.Debug("Redis error during cache lookup", "error", err, "shortCode", shortCode)
+	} else {
+		// Circuit is open - skip Redis
+		slog.Debug("Circuit breaker open, skipping Redis cache", "shortCode", shortCode)
 	}
 
 	// Cache miss or expired - get from database
@@ -79,11 +92,13 @@ func (d *URLRecordCachedDAO) GetByShortCode(ctx context.Context, shortCode strin
 		return nil, err
 	}
 
-	// Cache the result if found
-	if entity != nil {
+	// Cache the result if found (non-blocking - failures don't affect read)
+	if entity != nil && !d.circuitBreaker.IsOpen() {
 		if err := d.setCache(ctx, entity); err != nil {
-			// Log but don't fail the read operation if caching fails
-			slog.Debug("Failed to cache retrieved record", "error", err, "shortCode", shortCode)
+			d.circuitBreaker.RecordFailure()
+			slog.Debug("Failed to cache retrieved record", "error", err, "shortCode", shortCode, "circuitState", d.circuitBreaker.GetState())
+		} else {
+			d.circuitBreaker.RecordSuccess()
 		}
 	}
 

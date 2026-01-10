@@ -31,6 +31,10 @@ func NewURLRecordDatabaseDAO(dbPort int, dbName string, dbUser string, dbPasswor
 }
 
 func (d *URLRecordDatabaseDAO) Create(ctx context.Context, urlRecord model.URLRecord) (*model.URLRecordEntity, error) {
+	// Add query timeout (5s for writes - they're typically fast)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	// Create new entity
 	entity := model.URLRecordEntity{
 		Entity:    model.Entity{},
@@ -40,7 +44,7 @@ func (d *URLRecordDatabaseDAO) Create(ctx context.Context, urlRecord model.URLRe
 	// Use INSERT ... ON CONFLICT DO NOTHING. This detect conflicts without a
 	// separate SELECT query. Use the traditional API for Clauses since generics
 	// API doesn't support it directly.
-	result := d.db.WithContext(ctx).
+	result := d.db.WithContext(queryCtx).
 		Model(&entity).
 		Clauses(clause.OnConflict{
 			Columns:   []clause.Column{{Name: "short_code"}},
@@ -67,11 +71,15 @@ func (d *URLRecordDatabaseDAO) Create(ctx context.Context, urlRecord model.URLRe
 }
 
 func (d *URLRecordDatabaseDAO) GetByShortCode(ctx context.Context, shortCode string) (*model.URLRecordEntity, error) {
+	// Add query timeout (5s for reads - allows for slow queries under load while still failing fast)
+	queryCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
 	var entity model.URLRecordEntity
 
 	entity, err := gorm.G[model.URLRecordEntity](d.db).
 		Where("short_code = ? AND expires_at > ?", shortCode, time.Now()).
-		First(ctx)
+		First(queryCtx)
 
 	if err != nil {
 		if errors.Is(err, gorm.ErrRecordNotFound) {

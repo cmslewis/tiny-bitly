@@ -30,25 +30,6 @@ tasks:
     cmds:
       - API_PORT={{.PORT}} go run {{.CMD_PATH}}/main.go
 
-  start:multi:
-    desc: Start multiple server instances for horizontal scaling
-    vars:
-      INSTANCES: "4"
-    cmds:
-      - ./scripts/start-serveNors.sh {{.INSTANCES}}
-
-  stop:multi:
-    desc: Stop all server instances
-    cmds:
-      - ./scripts/stop-servers.sh
-
-  test:multi:
-    desc: 'Run load test against load balancer (horizontal scaling). Usage: task scale-test ARGS="-users=1000 -duration=60s"'
-    vars:
-      ARGS: "-users=1000 -duration=60s -read-only -warmup-writes=1000"
-    cmds:
-      - API_PORT=8080 go run ./cmd/test_load/main.go {{.ARGS}}
-
   test:
     desc: Run all tests
     cmds:

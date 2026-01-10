@@ -74,28 +74,7 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
-
-  nginx:
-    image: nginx:alpine
-    ports:
-      - 8080:8080
-    volumes:
-      # "Bind mount" the nginx.conf directly into the container, read-only (:ro).
-      # Changes to the file will be immediately reflected in the container.
-      - ./config/nginx/nginx.conf:/etc/nginx/nginx.conf:ro
-    restart: unless-stopped
-    depends_on:
-      - postgres
-      - redis
-    extra_hosts:
-      # Allow the nginx container to access Go servers running on the host machine.
-      - "host.docker.internal:host-gateway"
-    healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:8080/nginx-health"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-
+ 
 volumes:
   grafana-storage:
   postgres-data:
