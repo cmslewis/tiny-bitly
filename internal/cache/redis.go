@@ -34,12 +34,12 @@ func Init(ctx context.Context) error {
 		Password:     "",              // no password set
 		DB:           0,               // use default DB
 		DialTimeout:  5 * time.Second, // connection timeout
-		PoolSize:     200,             // connection pool size (more than this causes overhead)
-		MinIdleConns: 20,              // minimum idle connections to keep warm
-		MaxRetries:   1,               // retry failed commands (reduced to fail fast)
-		PoolTimeout:  2 * time.Second, // timeout for getting connection from pool (reduced)
-		ReadTimeout:  1 * time.Second, // read timeout (reduced for faster failure)
-		WriteTimeout: 1 * time.Second, // write timeout (reduced for faster failure)
+		PoolSize:     1000,            // connection pool size (increased for high concurrency)
+		MinIdleConns: 100,             // minimum idle connections to keep warm (increased)
+		MaxRetries:   2,               // retry failed commands
+		PoolTimeout:  5 * time.Second, // timeout for getting connection from pool (increased)
+		ReadTimeout:  3 * time.Second, // read timeout (increased - Redis is fast but needs buffer under load)
+		WriteTimeout: 3 * time.Second, // write timeout (increased - Redis is fast but needs buffer under load)
 	})
 
 	// Test the connection.
