@@ -1,6 +1,6 @@
 module tiny-bitly
 
-go 1.24.7
+go 1.24
 
 require (
 	github.com/didip/tollbooth/v8 v8.0.1
