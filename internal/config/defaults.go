@@ -17,6 +17,9 @@ var defaultPostgresDB string = ""
 var defaultPostgresUser string = ""
 var defaultPostgresPassword string = ""
 
+var defaultRedisHost string = "localhost"
+var defaultRedisPort int = 6380
+
 var defaultRateLimitBurst int = 10
 var defaultRateLimitRequestsPerSecond int = 1
 var defaultShortCodeLength int = 6
@@ -43,6 +46,8 @@ func GetDefaultConfig() Config {
 		PostgresDB:                 defaultPostgresDB,
 		PostgresUser:               defaultPostgresUser,
 		PostgresPassword:           defaultPostgresPassword,
+		RedisHost:                  defaultRedisHost,
+		RedisPort:                  defaultRedisPort,
 		ShortCodeLength:            defaultShortCodeLength,
 		ShortCodeTTL:               time.Duration(defaultShortCodeTtlMillis) * time.Millisecond,
 		IdleTimeout:                time.Duration(defaultTimeoutIdleMillis) * time.Millisecond,

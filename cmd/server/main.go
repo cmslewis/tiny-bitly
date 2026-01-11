@@ -48,7 +48,7 @@ func main() {
 	// Initialize Redis (non-fatal - will fall back to database-only if Redis is unavailable)
 	ctx := context.Background()
 	isRedisAvailable := false
-	if err := cache.Init(ctx); err != nil {
+	if err := cache.Init(ctx, cfg.RedisHost, cfg.RedisPort); err != nil {
 		slog.Warn("Redis initialization failed, continuing without cache", "error", err)
 	} else {
 		slog.Info("Redis initialized successfully")

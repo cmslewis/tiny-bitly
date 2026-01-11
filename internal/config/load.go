@@ -25,6 +25,10 @@ type Config struct {
 	PostgresUser     string
 	PostgresPassword string
 
+	// Redis
+	RedisHost string
+	RedisPort int
+
 	// Rate Limiting
 	RateLimitRequestsPerSecond int
 	RateLimitBurst             int
@@ -64,6 +68,9 @@ func LoadConfig() (*Config, error) {
 	postgresUser := getStringEnvOrDefault("POSTGRES_USER", defaultPostgresUser)
 	postgresPassword := getStringEnvOrDefault("POSTGRES_PASSWORD", defaultPostgresPassword)
 
+	redisHost := getStringEnvOrDefault("REDIS_HOST", defaultRedisHost)
+	redisPort := getIntEnvOrDefault("REDIS_PORT", defaultRedisPort)
+
 	idleTimeout := getDurationEnvOrDefault("TIMEOUT_IDLE_MILLIS", defaultTimeoutIdleMillis)
 	requestTimeout := getDurationEnvOrDefault("TIMEOUT_REQUEST_MILLIS", defaultTimeoutRequestMillis)
 	readTimeout := getDurationEnvOrDefault("TIMEOUT_READ_MILLIS", defaultTimeoutReadMillis)
@@ -88,6 +95,9 @@ func LoadConfig() (*Config, error) {
 		PostgresDB:       postgresDB,
 		PostgresUser:     postgresUser,
 		PostgresPassword: postgresPassword,
+
+		RedisHost: redisHost,
+		RedisPort: redisPort,
 
 		IdleTimeout:     idleTimeout,
 		ReadTimeout:     readTimeout,

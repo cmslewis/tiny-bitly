@@ -2,6 +2,7 @@ package cache
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"sync"
 	"time"
@@ -15,7 +16,7 @@ var (
 )
 
 // Init initializes the Redis client singleton. It's safe to call multiple times.
-func Init(ctx context.Context) error {
+func Init(ctx context.Context, redisHost string, redisPort int) error {
 	if redisClientInstance != nil {
 		return nil
 	}
@@ -29,8 +30,13 @@ func Init(ctx context.Context) error {
 	}
 
 	slog.Info("Initializing Redis client")
+
+	redisAddr := fmt.Sprintf("%s:%d", redisHost, redisPort)
+
+	slog.Info("Connecting to Redis", "address", redisAddr)
+
 	redisClientInstance = redis.NewClient(&redis.Options{
-		Addr:         "localhost:6380",
+		Addr:         redisAddr,
 		Password:     "",              // no password set
 		DB:           0,               // use default DB
 		DialTimeout:  5 * time.Second, // connection timeout
