@@ -1,0 +1,137 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tiny-bitly
+  namespace: tiny-bitly
+  labels:
+    app: tiny-bitly
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: tiny-bitly
+  template:
+    metadata:
+      labels:
+        app: tiny-bitly
+    spec:
+      # Service account for Cloud SQL Proxy
+      serviceAccountName: tiny-bitly-sa
+      
+      containers:
+      # Main application container
+      - name: tiny-bitly
+        image: gcr.io/tiny-bitly/tiny-bitly:latest
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+          protocol: TCP
+        env:
+        # Database configuration (via Cloud SQL Proxy)
+        - name: POSTGRES_HOST
+          value: "127.0.0.1"
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: postgres-port
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: postgres-db
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: tiny-bitly-secrets
+              key: postgres-password
+        # Redis configuration
+        - name: REDIS_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: redis-host
+        - name: REDIS_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: redis-port
+        # Application configuration
+        - name: API_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: api-port
+        - name: API_HOSTNAME
+          value: "http://tiny-bitly.tiny-bitly.svc.cluster.local"
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: log-level
+        - name: RATE_LIMIT_REQUESTS_PER_SECOND
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: rate-limit-requests-per-second
+        - name: RATE_LIMIT_BURST
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: rate-limit-burst
+        - name: ENV
+          value: "production"
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "256Mi"
+          limits:
+            cpu: "1000m"
+            memory: "512Mi"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      
+      # Cloud SQL Proxy sidecar
+      - name: cloud-sql-proxy
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.20.0
+        # IMPORTANT:
+        # Kubernetes does NOT expand env vars in `command` / `args`, so passing
+        # "$(INSTANCE_CONNECTION_NAME)" will be treated as a literal string.
+        # Put the instance connection name directly here (it is not a secret):
+        #   PROJECT_ID:REGION:INSTANCE_ID
+        # Example:
+        #   tiny-bitly:us-central1:tiny-bitly-db
+        command:
+        - "/cloud-sql-proxy"
+        - "--address=127.0.0.1"
+        - "--port=5432"
+        - "tiny-bitly:us-central1:tiny-bitly-db"
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+        securityContext:
+          runAsNonRoot: true

@@ -61,11 +61,22 @@ func main() {
 		slog.Error("Failed to get working directory", "error", err)
 		os.Exit(1)
 	}
-	// If we're in cmd/migrate, go up two levels; otherwise assume we're at root
+	// Prefer the repo layout (internal/db/migrations). In container builds for this
+	// project we copy migrations to /app/migrations, so fall back to that when present.
+	//
+	// If we're in cmd/migrate, go up two levels; otherwise assume we're at repo root.
 	if filepath.Base(wd) == "migrate" {
 		migrationsPath = filepath.Join(wd, "..", "..", "internal", "db", "migrations")
 	} else {
 		migrationsPath = filepath.Join(wd, "internal", "db", "migrations")
+	}
+
+	// Container fallback: /app/migrations
+	if _, statErr := os.Stat(migrationsPath); statErr != nil {
+		fallback := filepath.Join(wd, "migrations")
+		if _, fbErr := os.Stat(fallback); fbErr == nil {
+			migrationsPath = fallback
+		}
 	}
 
 	// Normalize path

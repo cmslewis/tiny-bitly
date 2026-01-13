@@ -1,0 +1,99 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: tiny-bitly-migrate
+  namespace: tiny-bitly
+spec:
+  template:
+    spec:
+      restartPolicy: OnFailure
+      serviceAccountName: tiny-bitly-sa
+      # Jobs only complete when ALL containers exit. A Cloud SQL Proxy sidecar
+      # would keep running forever, so we copy the proxy binary in via an
+      # initContainer and run/stop it inside the migrate container.
+      volumes:
+      - name: cloud-sql-proxy-bin
+        emptyDir: {}
+      initContainers:
+      - name: cloud-sql-proxy-init
+        image: gcr.io/cloud-sql-connectors/cloud-sql-proxy:2.20.0-alpine
+        command:
+        - /bin/sh
+        - -c
+        - |
+          set -eu
+          cp /cloud-sql-proxy /work/cloud-sql-proxy
+          chmod +x /work/cloud-sql-proxy
+        volumeMounts:
+        - name: cloud-sql-proxy-bin
+          mountPath: /work
+        resources:
+          requests:
+            cpu: "50m"
+            memory: "64Mi"
+          limits:
+            cpu: "200m"
+            memory: "128Mi"
+      containers:
+      - name: migrate
+        image: gcr.io/tiny-bitly/tiny-bitly:latest
+        command:
+        - "/bin/sh"
+        - "-c"
+        - |
+          set -eu
+          /work/cloud-sql-proxy --address=127.0.0.1 --port=5432 tiny-bitly:us-central1:tiny-bitly-db &
+          PROXY_PID=$!
+          # Give the proxy a moment to start.
+          sleep 2
+          # Retry migrations a few times in case the proxy isn't ready yet.
+          EXIT=1
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if /app/migrate -command=up; then
+              EXIT=0
+              break
+            fi
+            sleep 2
+          done
+          # Stop the proxy so the Job can complete.
+          kill "$PROXY_PID" || true
+          wait "$PROXY_PID" || true
+          exit "$EXIT"
+        env:
+        # Config loader requires API_HOSTNAME even for migrations
+        - name: API_HOSTNAME
+          value: "http://tiny-bitly.tiny-bitly.svc.cluster.local"
+        - name: POSTGRES_HOST
+          value: "127.0.0.1"
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: postgres-port
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: postgres-db
+        - name: POSTGRES_USER
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: postgres-user
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: tiny-bitly-secrets
+              key: postgres-password
+        - name: ENV
+          value: "production"
+        volumeMounts:
+        - name: cloud-sql-proxy-bin
+          mountPath: /work
+        resources:
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+          limits:
+            cpu: "500m"
+            memory: "256Mi"

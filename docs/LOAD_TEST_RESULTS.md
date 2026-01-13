@@ -870,3 +870,120 @@ Performance Indicators:
 
 </pre>
 </details>
+
+## V6
+
+- Removed nginx, added circuit breaker and tuned values
+
+### Concurrent reads
+
+| Metric          | 100 users | 1000 | 10k | 25k | 50k | 100k |
+| --------------- | --- | --- | --- | --- | --- | --- |
+| P95             | 36.5ms | 528.7 | 10.1s |  |  |  |
+| Requests Failed | 0% | 0% | 40.4% |  |  |
+
+<details>
+<summary>100 users</summary>
+<pre>
+Duration:           30s
+Total Requests:     3000
+Successful:         3000 (100.00%)
+Failed:             0 (0.00%)
+Throughput:         99.89 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 0
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  3000 total, 3000 successful (100.00%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    4.727ms
+  P50:    25.555ms
+  P75:    30.72ms
+  P90:    34.228ms
+  P95:    36.598ms
+  P99:    40.683ms
+  P99.9:  43.635ms
+  Max:    44.524ms
+  Avg:    25.577ms
+
+</pre>
+</details>
+
+<details>
+<summary>1000 users</summary>
+<pre>
+Duration:           31s
+Total Requests:     30000
+Successful:         30000 (100.00%)
+Failed:             0 (0.00%)
+Throughput:         980.74 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 0
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  30000 total, 30000 successful (100.00%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    11.72ms
+  P50:    160.628ms
+  P75:    458.645ms
+  P90:    505.333ms
+  P95:    528.691ms
+  P99:    554.709ms
+  P99.9:  570.601ms
+  Max:    578.817ms
+  Avg:    280.781ms
+
+</pre>
+</details>
+
+<details>
+<summary>10000 users</summary>
+<pre>
+Duration:           35s
+Total Requests:     38916
+Successful:         23193 (59.60%)
+Failed:             15723 (40.40%)
+Throughput:         1106.36 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 9353
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  38916 total, 23193 successful (59.60%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    53.569ms
+  P50:    5.102388s
+  P75:    5.913674s
+  P90:    10.103708s
+  P95:    10.152564s
+  P99:    15.341487s
+  P99.9:  17.350768s
+  Max:    26.016328s
+  Avg:    5.850096s
+
+Performance Indicators:
+  ⚠️  Success rate is below 95% - system may be overloaded
+  ⚠️  High server error rate (24.03%) - check application logs
+</pre>
+</details>
+
+<details>
+<summary>25000 users</summary>
+<pre>
+
+</pre>
+</details>

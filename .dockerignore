@@ -1,0 +1,51 @@
+# Git
+.git
+.gitignore
+
+# Documentation
+docs/
+*.md
+README.md
+
+# Kubernetes manifests (not needed in container)
+k8s/
+
+# Docker
+Dockerfile
+.dockerignore
+docker-compose.yml
+docker-compose.production.yml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build artifacts
+bin/
+*.exe
+*.test
+
+# Test files
+*_test.go
+test/
+
+# Coverage
+coverage.out
+coverage.html
+
+# Environment files
+.env
+.env.local
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+tmp/
+temp/

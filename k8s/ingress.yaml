@@ -1,0 +1,21 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: tiny-bitly-ingress
+  namespace: tiny-bitly
+  annotations:
+    kubernetes.io/ingress.global-static-ip-name: tiny-bitly-ip
+    networking.gke.io/managed-certificates: tiny-bitly-ssl-cert
+    kubernetes.io/ingress.class: "gce"
+spec:
+  rules:
+  - host: tiny-bitly.example.com  # Replace with your domain
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: tiny-bitly
+            port:
+              number: 80
