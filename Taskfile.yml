@@ -3,6 +3,12 @@ version: '3'
 vars:
   BINARY_NAME: server
   CMD_PATH: ./cmd/server
+  # Kubernetes
+  KUBECTL: kubectl
+  K8S_NAMESPACE: tiny-bitly
+  K8S_DIR: k8s
+  K8S_JOBS_DIR: k8s/jobs
+  K8S_DEPLOYMENT: tiny-bitly
   VERSION:
     sh: git describe --tags --always --dirty 2>/dev/null || echo "dev"
   COMMIT:
@@ -98,3 +104,34 @@ tasks:
     desc: Load lots of test URL records into the database
     cmds:
       - go run ./cmd/load_test_data/main.go
+
+  k8s:context:
+    desc: Show current kubectl context
+    cmds:
+      - '{{.KUBECTL}} config current-context'
+      
+  k8s:deploy:
+    desc: Apply manifests then restart + wait for rollout (does NOT run migrations)
+    cmds:
+      - '{{.KUBECTL}} apply -f {{.K8S_DIR}}/'
+      - '{{.KUBECTL}} -n {{.K8S_NAMESPACE}} rollout restart deployment/{{.K8S_DEPLOYMENT}}'
+      - '{{.KUBECTL}} -n {{.K8S_NAMESPACE}} rollout status deployment/{{.K8S_DEPLOYMENT}}'
+
+  k8s:migrate:
+    desc: Create a new migration Job (uses generateName, so use kubectl create)
+    cmds:
+      - '{{.KUBECTL}} create -f {{.K8S_JOBS_DIR}}/migration-job.yaml'
+
+  k8s:migrate:logs:
+    desc: Tail logs for the most recently created migration Job
+    cmds:
+      - |
+        set -eu
+        JOB="$({{.KUBECTL}} -n {{.K8S_NAMESPACE}} get jobs --sort-by=.metadata.creationTimestamp -o name | tail -1)"
+        echo "Tailing logs for ${JOB} in namespace {{.K8S_NAMESPACE}}..."
+        {{.KUBECTL}} -n {{.K8S_NAMESPACE}} logs "${JOB}" --tail=200
+
+  k8s:status:
+    desc: Show tiny-bitly k8s resources (deployments/pods/services/ingress/jobs)
+    cmds:
+      - '{{.KUBECTL}} -n {{.K8S_NAMESPACE}} get deploy,pods,svc,ingress,jobs'

@@ -1,9 +1,11 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: tiny-bitly-migrate
+  generateName: tiny-bitly-migrate-
   namespace: tiny-bitly
 spec:
+  # Avoid accumulating Jobs forever.
+  ttlSecondsAfterFinished: 600
   template:
     spec:
       restartPolicy: OnFailure
@@ -42,7 +44,9 @@ spec:
         - "-c"
         - |
           set -eu
-          /work/cloud-sql-proxy --address=127.0.0.1 --port=5432 tiny-bitly:us-central1:tiny-bitly-db &
+          # Start the proxy in the background. Its normal shutdown emits a scary-looking
+          # "use of closed network connection" line, so we redirect proxy logs to a file.
+          /work/cloud-sql-proxy --address=127.0.0.1 --port=5432 tiny-bitly:us-central1:tiny-bitly-db >/tmp/cloud-sql-proxy.log 2>&1 &
           PROXY_PID=$!
           # Give the proxy a moment to start.
           sleep 2
@@ -56,13 +60,16 @@ spec:
             sleep 2
           done
           # Stop the proxy so the Job can complete.
+          echo "Stopping Cloud SQL Proxy (expected)..."
           kill "$PROXY_PID" || true
           wait "$PROXY_PID" || true
+          # If migrations failed, print proxy logs to aid debugging.
+          if [ "$EXIT" -ne 0 ]; then
+            echo "Migrations failed; dumping Cloud SQL Proxy logs:"
+            tail -200 /tmp/cloud-sql-proxy.log || true
+          fi
           exit "$EXIT"
         env:
-        # Config loader requires API_HOSTNAME even for migrations
-        - name: API_HOSTNAME
-          value: "http://tiny-bitly.tiny-bitly.svc.cluster.local"
         - name: POSTGRES_HOST
           value: "127.0.0.1"
         - name: POSTGRES_PORT
@@ -97,3 +104,4 @@ spec:
           limits:
             cpu: "500m"
             memory: "256Mi"
+

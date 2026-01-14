@@ -68,8 +68,6 @@ spec:
             configMapKeyRef:
               name: tiny-bitly-config
               key: api-port
-        - name: API_HOSTNAME
-          value: "http://tiny-bitly.tiny-bitly.svc.cluster.local"
         - name: LOG_LEVEL
           valueFrom:
             configMapKeyRef:

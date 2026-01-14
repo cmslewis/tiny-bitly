@@ -1,9 +1,9 @@
 package config
 
 import (
+	"fmt"
 	"log/slog"
 	"time"
-	"tiny-bitly/internal/apperrors"
 )
 
 type Config struct {
@@ -45,12 +45,9 @@ type Config struct {
 // Loads environment variables and returns them into a central config object.
 // Returns an error if critical config is not defined in env files.
 func LoadConfig() (*Config, error) {
-	hostname, err := getStringEnv("API_HOSTNAME")
-	if err != nil {
-		return nil, apperrors.ErrConfigurationMissing
-	}
-
 	port := getIntEnvOrDefault("API_PORT", defaultAPIPort)
+	defaultHostname := fmt.Sprintf("http://localhost:%d", port)
+	hostname := getStringEnvOrDefault("API_HOSTNAME", defaultHostname)
 	logLevel := getStringEnvOrDefault("LOG_LEVEL", defaultLogLevel)
 
 	rateLimitRPS := getIntEnvOrDefault("RATE_LIMIT_REQUESTS_PER_SECOND", defaultRateLimitRequestsPerSecond)

@@ -6,8 +6,8 @@ metadata:
   annotations:
     kubernetes.io/ingress.global-static-ip-name: tiny-bitly-ip
     networking.gke.io/managed-certificates: tiny-bitly-ssl-cert
-    kubernetes.io/ingress.class: "gce"
 spec:
+  ingressClassName: gce
   rules:
   - host: tiny-bitly.example.com  # Replace with your domain
     http:

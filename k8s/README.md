@@ -10,7 +10,7 @@ This directory contains Kubernetes manifests for deploying tiny-bitly to GKE.
 - `service.yaml` - Service (LoadBalancer by default) for exposing the app publicly
 - `hpa.yaml` - Horizontal Pod Autoscaler for auto-scaling
 - `ingress.yaml` - External HTTP(S) load balancer (optional)
-- `migration-job.yaml` - One-time job for running database migrations
+- `jobs/migration-job.yaml` - One-off migration Job (created with `kubectl create`, uses `generateName`)
 
 ## Setup Instructions
 

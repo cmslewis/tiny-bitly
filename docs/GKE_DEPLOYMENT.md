@@ -309,14 +309,14 @@ kubectl logs -f deployment/tiny-bitly -n tiny-bitly
 Run migrations using a Kubernetes Job:
 
 ```bash
-# Apply migration job
-kubectl apply -f k8s/migration-job.yaml
+# Create migration job (uses generateName, so use create not apply)
+kubectl create -f k8s/jobs/migration-job.yaml
 
 # Check job status
 kubectl get jobs -n tiny-bitly
 
-# View migration logs
-kubectl logs job/tiny-bitly-migrate -n tiny-bitly
+# View migration logs (Cloud SQL Proxy logs are redirected unless migrations fail)
+kubectl logs -n tiny-bitly -l job-name --tail=200
 ```
 
 ### 11. Access Your Application
@@ -356,7 +356,7 @@ The deployment uses the following Kubernetes resources:
 - SSL/TLS termination
 - Path-based routing
 
-### Job (`k8s/migration-job.yaml`)
+### Job (`k8s/jobs/migration-job.yaml`)
 - Runs database migrations as a one-time job
 - Uses the same container image as the application
 
