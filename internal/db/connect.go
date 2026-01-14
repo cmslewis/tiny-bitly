@@ -39,13 +39,14 @@ func OpenConnectionGORM(port int, dbName string, user string, password string) (
 
 	// SetMaxOpenConns: Maximum number of open connections to the database
 	// Should be less than PostgreSQL's max_connections setting
-	// For high concurrency, use 25-100 connections (PostgreSQL performs best with 100-300 total)
-	sqlDB.SetMaxOpenConns(100)
+	// For Cloud SQL small instances (25-100 max_connections), use 20-25 per pod
+	// With 2 replicas, that's 40-50 total connections (leaving headroom for admin connections)
+	sqlDB.SetMaxOpenConns(25)
 
 	// SetMaxIdleConns: Maximum number of connections in the idle connection pool
 	// Should be less than or equal to SetMaxOpenConns
 	// Keeps connections warm for reuse, reducing connection overhead
-	sqlDB.SetMaxIdleConns(25)
+	sqlDB.SetMaxIdleConns(10)
 
 	// SetConnMaxLifetime: Maximum amount of time a connection may be reused
 	// Prevents stale connections and helps with load balancer connection rotation
