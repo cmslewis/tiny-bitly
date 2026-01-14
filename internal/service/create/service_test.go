@@ -2,7 +2,6 @@ package create
 
 import (
 	"context"
-	"strings"
 	"testing"
 	"tiny-bitly/internal/apperrors"
 	"tiny-bitly/internal/config"
@@ -40,14 +39,14 @@ func (suite *CreateServiceSuite) SetupTest() {
 
 func (suite *CreateServiceSuite) TestErrorInputURLEmpty() {
 	originalURL := ""
-	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, nil)
+	_, err := suite.service.CreateShortCode(suite.ctx, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
 
 func (suite *CreateServiceSuite) TestErrorInputURLInvalidChars() {
 	originalURL := "www.`.com"
-	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, nil)
+	_, err := suite.service.CreateShortCode(suite.ctx, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorContains(err, "invalid URL")
 }
@@ -56,7 +55,7 @@ func (suite *CreateServiceSuite) TestErrorInputURLTooLong() {
 	cfg := config.GetTestConfig(config.Config{MaxURLLength: 2})
 	service := NewService(suite.dao, &cfg)
 	originalURL := "abc"
-	_, err := service.CreateShortURL(suite.ctx, originalURL, nil)
+	_, err := service.CreateShortCode(suite.ctx, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrURLLengthExceeded)
 }
@@ -64,7 +63,7 @@ func (suite *CreateServiceSuite) TestErrorInputURLTooLong() {
 func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {
 	originalURL := "https://www.foo.com"
 	alias := ""
-	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, &alias)
+	_, err := suite.service.CreateShortCode(suite.ctx, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrInvalidAlias)
 }
@@ -72,7 +71,7 @@ func (suite *CreateServiceSuite) TestErrorInputAliasEmpty() {
 func (suite *CreateServiceSuite) TestErrorInputAliasInvalidChars() {
 	originalURL := "https://www.foo.com"
 	alias := "`"
-	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, &alias)
+	_, err := suite.service.CreateShortCode(suite.ctx, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrInvalidAlias)
 }
@@ -83,23 +82,26 @@ func (suite *CreateServiceSuite) TestErrorInputAliasAlreadyUsedForDifferentURL()
 
 	originalURL := "https://www.foo.com"
 	alias := "bar"
-	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, &alias)
+	_, err := suite.service.CreateShortCode(suite.ctx, originalURL, &alias)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrAliasAlreadyInUse)
 }
 
-func (suite *CreateServiceSuite) TestErrorConfigAPIHostnameMissing() {
-	// HACK: Set the API Hostname to empty string.
+func (suite *CreateServiceSuite) TestSuccessConfigAPIHostnameMissing() {
+	// API_HOSTNAME is no longer required for CreateShortCode (the HTTP handler
+	// derives the public base URL from the request). Ensure empty hostname does
+	// not block creation.
 	cfg := config.GetTestConfig(config.Config{})
 	cfg.APIHostname = ""
 	service := NewService(suite.dao, &cfg)
 
-	suite.MockCreateSuccess().Times(0)
+	suite.MockCreateSuccess().Times(1)
 
 	originalURL := "https://www.foo.com"
-	_, err := service.CreateShortURL(suite.ctx, originalURL, nil)
-	suite.NotNil(err)
-	suite.ErrorIs(err, apperrors.ErrConfigurationMissing)
+	shortCode, err := service.CreateShortCode(suite.ctx, originalURL, nil)
+	suite.NoError(err)
+	suite.NotNil(shortCode)
+	suite.NotEmpty(*shortCode)
 }
 
 func (suite *CreateServiceSuite) TestErrorMaxRetries() {
@@ -107,7 +109,7 @@ func (suite *CreateServiceSuite) TestErrorMaxRetries() {
 	suite.MockCreateFail().AnyTimes()
 
 	originalURL := "https://www.foo.com"
-	_, err := suite.service.CreateShortURL(suite.ctx, originalURL, nil)
+	_, err := suite.service.CreateShortCode(suite.ctx, originalURL, nil)
 	suite.NotNil(err)
 	suite.ErrorIs(err, apperrors.ErrMaxRetriesExceeded)
 }
@@ -124,7 +126,7 @@ func (suite *CreateServiceSuite) TestConfigMaxTries() {
 	suite.MockCreateSuccess().Times(0)
 
 	originalURL := "https://www.foo.com"
-	_, err := service.CreateShortURL(suite.ctx, originalURL, nil)
+	_, err := service.CreateShortCode(suite.ctx, originalURL, nil)
 
 	suite.Error(err)
 	suite.ErrorIs(err, apperrors.ErrMaxRetriesExceeded)
@@ -138,30 +140,23 @@ func (suite *CreateServiceSuite) TestConfigShortCodeLength() {
 	suite.MockCreateSuccess().Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := service.CreateShortURL(suite.ctx, originalURL, nil)
+	shortCode, err := service.CreateShortCode(suite.ctx, originalURL, nil)
 	suite.Nil(err)
-	suite.NotNil(shortURL)
-	slashIndex := strings.LastIndex(*shortURL, "/")
-	shortCode := (*shortURL)[slashIndex+1:]
-	suite.Len(shortCode, customShortCodeLength)
+	suite.NotNil(shortCode)
+	suite.Len(*shortCode, customShortCodeLength)
 }
 
 func (suite *CreateServiceSuite) TestSuccess() {
 	suite.MockCreateSuccess().Times(1)
 
 	originalURL := "https://www.foo.com"
-	shortURL, err := suite.service.CreateShortURL(suite.ctx, originalURL, nil)
+	shortCode, err := suite.service.CreateShortCode(suite.ctx, originalURL, nil)
 	suite.Nil(err)
-	suite.NotNil(shortURL)
+	suite.NotNil(shortCode)
 
-	// Verify the short URL contains the expected hostname
-	suite.Contains(*shortURL, "http://localhost:8080")
-
-	// Verify the short URL contains a valid short code
-	slashIndex := strings.LastIndex(*shortURL, "/")
-	shortCode := (*shortURL)[slashIndex+1:]
-	suite.Len(shortCode, 6)
-	suite.NotEmpty(shortCode)
+	// Verify the short code has default length
+	suite.Len(*shortCode, 6)
+	suite.NotEmpty(*shortCode)
 }
 
 func (suite *CreateServiceSuite) MockCreateFail() *gomock.Call {

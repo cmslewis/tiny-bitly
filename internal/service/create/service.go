@@ -3,7 +3,6 @@ package create
 import (
 	"context"
 	"errors"
-	"net/url"
 	"time"
 	"tiny-bitly/internal/apperrors"
 	"tiny-bitly/internal/config"
@@ -26,8 +25,8 @@ func NewService(dao dao.DAO, config *config.Config) *Service {
 	}
 }
 
-// CreateShortURL creates and saves an alias for the provided long URL, then returns the alias.
-func (s *Service) CreateShortURL(
+// CreateShortCode creates and saves an alias for the provided long URL, then returns the short code.
+func (s *Service) CreateShortCode(
 	ctx context.Context,
 	originalURL string,
 	alias *string,
@@ -38,10 +37,6 @@ func (s *Service) CreateShortURL(
 		return nil, apperrors.ErrInvalidURL
 	}
 
-	hostname := s.config.APIHostname
-	if hostname == "" {
-		return nil, apperrors.ErrConfigurationMissing
-	}
 	maxAliasLength := s.config.MaxAliasLength
 	maxTries := s.config.MaxTriesCreateShortCode
 	maxURLLength := s.config.MaxURLLength
@@ -109,13 +104,5 @@ func (s *Service) CreateShortURL(
 	}
 
 	middleware.LogWithRequestID(ctx, "Generated a new short code for URL", "originalURL", *validatedURL, "shortCode", shortCode)
-
-	// Build the short URL using the short code.
-	shortURL, err := url.JoinPath(hostname, shortCode)
-	if err != nil {
-		middleware.LogErrorWithRequestID(ctx, err, "Failed to build short URL")
-		return nil, apperrors.ErrConfigurationMissing
-	}
-
-	return &shortURL, nil
+	return &shortCode, nil
 }

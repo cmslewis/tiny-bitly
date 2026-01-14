@@ -3,6 +3,7 @@ package create
 import (
 	"encoding/json"
 	"net/http"
+	"net/url"
 	"tiny-bitly/internal/middleware"
 )
 
@@ -37,8 +38,18 @@ func NewPostURLHandler(service *Service) http.HandlerFunc {
 		middleware.LogWithRequestID(r.Context(), "Request received", "requestURL", request.URL)
 
 		// Create the short URL.
-		shortURL, err := service.CreateShortURL(r.Context(), request.URL, request.Alias)
+		shortCode, err := service.CreateShortCode(r.Context(), request.URL, request.Alias)
 		if err != nil {
+			handleServiceError(r.Context(), w, err)
+			return
+		}
+
+		// Build the short URL using the public URL, which may differ from the
+		// URL to the K8s pod.
+		baseURL := middleware.PublicBaseURL(r, service.config.APIHostname)
+		shortURL, err := url.JoinPath(baseURL, *shortCode)
+		if err != nil {
+			middleware.LogErrorWithRequestID(r.Context(), err, "Failed to build short URL")
 			handleServiceError(r.Context(), w, err)
 			return
 		}
@@ -47,7 +58,7 @@ func NewPostURLHandler(service *Service) http.HandlerFunc {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusCreated)
 		err = writeResponseJson(w, CreateURLResponse{
-			ShortURL: *shortURL,
+			ShortURL: shortURL,
 		})
 		if err != nil {
 			handleServiceError(r.Context(), w, err)
