@@ -105,6 +105,18 @@ tasks:
     cmds:
       - go run ./cmd/load_test_data/main.go
 
+  k8s:build-push:
+    desc: Build and push Docker image to GCR (requires gcloud auth and docker)
+    vars:
+      PROJECT_ID:
+        sh: gcloud config get-value project 2>/dev/null || echo "tiny-bitly"
+      IMAGE_NAME: gcr.io/{{.PROJECT_ID}}/tiny-bitly
+      IMAGE_TAG: latest
+    cmds:
+      - echo "Building Docker image {{.IMAGE_NAME}}:{{.IMAGE_TAG}}..."
+      - docker buildx build --platform linux/amd64 -t {{.IMAGE_NAME}}:{{.IMAGE_TAG}} --push .
+      - echo "Image pushed successfully"
+
   k8s:context:
     desc: Show current kubectl context
     cmds:

@@ -83,6 +83,11 @@ spec:
             configMapKeyRef:
               name: tiny-bitly-config
               key: rate-limit-burst
+        - name: SHORT_CODE_TTL_MILLIS
+          valueFrom:
+            configMapKeyRef:
+              name: tiny-bitly-config
+              key: short-code-ttl-millis
         - name: ENV
           value: "production"
         resources:

@@ -322,8 +322,8 @@ func warmupSequentialWrites(baseURL string, numWrites int) []string {
 		}
 
 		// Small delay to avoid overwhelming the server and respect rate limits
-		// Even in sequential mode, we want to be gentle
-		time.Sleep(10 * time.Millisecond)
+		// Reduced from 10ms to 1ms for faster warmup (server can handle it)
+		time.Sleep(1 * time.Millisecond)
 
 		// Progress indicator - show every 10 codes and include success count
 		if (i+1)%10 == 0 {

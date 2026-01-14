@@ -42,14 +42,18 @@ func (d *URLRecordCachedDAO) Create(ctx context.Context, urlRecord model.URLReco
 		return nil, err
 	}
 
-	// Cache the newly created record (non-blocking - failures don't affect create)
+	// Cache the newly created record asynchronously (non-blocking - failures don't affect create).
+	// Fire-and-forget to avoid blocking the write response.
 	if entity != nil && !d.circuitBreaker.IsOpen() {
-		if err := d.setCache(ctx, entity); err != nil {
-			d.circuitBreaker.RecordFailure()
-			slog.Warn("Failed to cache created record", "error", err, "shortCode", urlRecord.ShortCode, "circuitState", d.circuitBreaker.GetState())
-		} else {
-			d.circuitBreaker.RecordSuccess()
-		}
+		go func() {
+			// Use background context since this is async.
+			if err := d.setCache(context.Background(), entity); err != nil {
+				d.circuitBreaker.RecordFailure()
+				slog.Warn("Failed to cache created record", "error", err, "shortCode", urlRecord.ShortCode, "circuitState", d.circuitBreaker.GetState())
+			} else {
+				d.circuitBreaker.RecordSuccess()
+			}
+		}()
 	}
 
 	return entity, nil
