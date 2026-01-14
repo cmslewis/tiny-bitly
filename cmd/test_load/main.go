@@ -99,8 +99,11 @@ func main() {
 		log.Fatal("read-ratio must be between 0.0 and 1.0")
 	}
 
+	// Normalize baseURL: remove trailing slash to avoid double slashes in paths
+	normalizedBaseURL := strings.TrimRight(*baseURL, "/")
+
 	cfg := Config{
-		BaseURL:             *baseURL,
+		BaseURL:             normalizedBaseURL,
 		ConcurrentUsers:     *concurrentUsers,
 		Duration:            *duration,
 		ReadRatio:           effectiveReadRatio,
