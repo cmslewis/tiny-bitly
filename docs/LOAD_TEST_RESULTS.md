@@ -987,3 +987,79 @@ Performance Indicators:
 
 </pre>
 </details>
+
+## V7
+
+- Deployed to prod via K8s
+
+### Concurrent reads
+
+| Metric          | 100 users | 1000 | 10k | 25k | 50k | 100k |
+| --------------- | --- | --- | --- | --- | --- | --- |
+| P95             | 557.871ms | 22.29s |  |  |  |  |
+| Requests Failed | 0% | 30.53% |  |  |  |
+
+<details>
+<summary>100 users</summary>
+<pre>
+Duration:           30s
+Total Requests:     3000
+Successful:         3000 (100.00%)
+Failed:             0 (0.00%)
+Throughput:         99.89 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 0
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  3000 total, 3000 successful (100.00%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    4.727ms
+  P50:    25.555ms
+  P75:    30.72ms
+  P90:    34.228ms
+  P95:    36.598ms
+  P99:    40.683ms
+  P99.9:  43.635ms
+  Max:    44.524ms
+  Avg:    25.577ms
+
+</pre>
+</details>
+<details>
+<summary>1000 users</summary>
+<pre>
+Duration:           58s
+Total Requests:     2709
+Successful:         1882 (69.47%)
+Failed:             827 (30.53%)
+Throughput:         46.69 req/s
+
+Error Breakdown:
+  Rate Limited (429): 0
+  Timeouts:           0
+  Server Errors (5xx): 0
+  Client Errors (4xx): 0
+
+Request Type Breakdown:
+  Reads:  2709 total, 1882 successful (69.47%), 0 rate limited, 0 client errors
+
+Latency Statistics (successful requests only):
+  Min:    127.841ms
+  P50:    3.60669s
+  P75:    7.228877s
+  P90:    16.656924s
+  P95:    22.294551s
+  P99:    27.970518s
+  P99.9:  29.862692s
+  Max:    29.862692s
+  Avg:    6.111602s
+
+Performance Indicators:
+  ⚠️  Success rate is below 95% - system may be overloaded
+</pre>
+</details>
