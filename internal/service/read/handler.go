@@ -35,9 +35,16 @@ func NewGetURLHandler(service *Service) http.HandlerFunc {
 		// Return 404 if original URL not found.
 		if originalURL == nil {
 			middleware.LogDebugWithRequestID(r.Context(), "No URL found for short code", "shortCode", shortCode)
+			// Cache 404s for a short time to reduce load on invalid codes.
+			w.Header().Set("Cache-Control", "public, max-age=60")
 			http.Error(w, "No URL found for short code", http.StatusNotFound)
 			return
 		}
+
+		// Set cache headers for CDN caching (302 redirects are cacheable).
+		// Cache for 24 hours - short codes rarely change, and expired codes are filtered by DB query.
+		w.Header().Set("Cache-Control", "public, max-age=86400, s-maxage=86400")
+		w.Header().Set("Vary", "Accept-Encoding")
 
 		// 302 Temporary Redirect to the original URL.
 		http.Redirect(w, r, *originalURL, http.StatusFound)
