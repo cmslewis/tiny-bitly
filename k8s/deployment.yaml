@@ -123,12 +123,12 @@ spec:
         # Put the instance connection name directly here (it is not a secret):
         #   PROJECT_ID:REGION:INSTANCE_ID
         # Example:
-        #   tiny-bitly:us-central1:tiny-bitly-db
+        #   tiny-bitly:us-west1:tiny-bitly-db-west1
         command:
         - "/cloud-sql-proxy"
         - "--address=127.0.0.1"
         - "--port=5432"
-        - "tiny-bitly:us-central1:tiny-bitly-db"
+        - "tiny-bitly:us-west1:tiny-bitly-db-west1"
         resources:
           requests:
             cpu: "50m"

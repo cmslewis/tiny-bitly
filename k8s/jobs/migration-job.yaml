@@ -46,7 +46,7 @@ spec:
           set -eu
           # Start the proxy in the background. Its normal shutdown emits a scary-looking
           # "use of closed network connection" line, so we redirect proxy logs to a file.
-          /work/cloud-sql-proxy --address=127.0.0.1 --port=5432 tiny-bitly:us-central1:tiny-bitly-db >/tmp/cloud-sql-proxy.log 2>&1 &
+          /work/cloud-sql-proxy --address=127.0.0.1 --port=5432 tiny-bitly:us-west1:tiny-bitly-db-west1 >/tmp/cloud-sql-proxy.log 2>&1 &
           PROXY_PID=$!
           # Give the proxy a moment to start.
           sleep 2

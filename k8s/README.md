@@ -17,8 +17,8 @@ This directory contains Kubernetes manifests for deploying tiny-bitly to GKE.
 1. **Update placeholders** in the manifests:
    - Replace `PROJECT_ID` with your GCP project ID
    - Replace the Cloud SQL instance connection name placeholder:
-     - `PROJECT_ID:us-central1:tiny-bitly-db` in `deployment.yaml` and `migration-job.yaml`
-     - Format is `PROJECT_ID:REGION:INSTANCE_ID` (example: `tiny-bitly:us-central1:tiny-bitly-db`)
+     - `PROJECT_ID:us-west1:tiny-bitly-db` in `deployment.yaml` and `migration-job.yaml`
+     - Format is `PROJECT_ID:REGION:INSTANCE_ID` (example: `tiny-bitly:us-west1:tiny-bitly-db`)
    - Replace `tiny-bitly.example.com` in `ingress.yaml` with your domain (or remove ingress if not needed)
 
 2. **Create secrets and configmaps** (see main GKE_DEPLOYMENT.md guide)
